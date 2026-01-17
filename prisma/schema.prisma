@@ -1,0 +1,362 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Category {
+  category_id Int       @id @default(autoincrement())
+  name        String
+  JobPost     JobPost[]
+}
+
+model Company {
+  company_id            Int                 @id @default(autoincrement())
+  company_name          String
+  profile_description   String?
+  company_type          String?
+  company_industry      String?
+  establishment_date    DateTime?
+  company_size          String?
+  country               String?
+  city                  String?
+  working_days          String?
+  working_time          String?
+  overtime_policy       String?
+  company_website_url   String?
+  company_email         String?
+  company_image         String?
+  cover_image           String?
+  key_skills            String?
+  why_love_working_here String?
+  is_active             Boolean             @default(true)
+  created_date          DateTime            @default(now())
+  CompanyFollow         CompanyFollow[]
+  CompanySeekerLike     CompanySeekerLike[]
+  Employee              Employee[]
+  JobPost               JobPost[]
+}
+
+model CompanyFollow {
+  follow_id     Int      @id @default(autoincrement())
+  seeker_id     Int
+  company_id    Int
+  followed_date DateTime @default(now())
+  is_active     Boolean  @default(true)
+  Company       Company  @relation(fields: [company_id], references: [company_id])
+  Seeker        Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+
+  @@unique([seeker_id, company_id])
+}
+
+model CompanySeekerLike {
+  company_seeker_like_id Int      @id @default(autoincrement())
+  company_id             Int
+  seeker_id              Int
+  liked_by_employee_id   Int
+  liked_date             DateTime @default(now())
+  note                   String?
+  Company                Company  @relation(fields: [company_id], references: [company_id])
+  Employee               Employee @relation(fields: [liked_by_employee_id], references: [employee_id])
+  Seeker                 Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model Conversation {
+  conversation_id Int       @id @default(autoincrement())
+  seeker_id       Int
+  employee_id     Int
+  created_date    DateTime  @default(now())
+  last_message_at DateTime?
+  Employee        Employee  @relation(fields: [employee_id], references: [employee_id])
+  Seeker          Seeker    @relation(fields: [seeker_id], references: [seeker_id])
+  Message         Message[]
+}
+
+model Employee {
+  employee_id       Int                 @id
+  company_id        Int
+  role              String
+  joined_date       DateTime?
+  CompanySeekerLike CompanySeekerLike[]
+  Conversation      Conversation[]
+  Company           Company             @relation(fields: [company_id], references: [company_id])
+  User              User                @relation(fields: [employee_id], references: [user_id])
+  InterviewSchedule InterviewSchedule[]
+  JobPost           JobPost[]
+}
+
+model InterviewSchedule {
+  id                   Int             @id @default(autoincrement())
+  job_post_activity_id Int
+  seeker_id            Int
+  employee_id          Int
+  interview_round      Int
+  interview_type       String?
+  interview_date       DateTime?
+  start_time           DateTime?
+  end_time             DateTime?
+  location             String?
+  status               InterviewStatus
+  note                 String?
+  created_date         DateTime        @default(now())
+  update_date          DateTime
+  Employee             Employee        @relation(fields: [employee_id], references: [employee_id])
+  JobPostActivity      JobPostActivity @relation(fields: [job_post_activity_id], references: [application_id])
+  Seeker               Seeker          @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model JobBookmark {
+  job_bookmark_id Int      @id @default(autoincrement())
+  seeker_id       Int
+  job_post_id     Int
+  bookmarked_date DateTime @default(now())
+  JobPost         JobPost  @relation(fields: [job_post_id], references: [job_post_id])
+  Seeker          Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+
+  @@unique([seeker_id, job_post_id])
+}
+
+model JobPost {
+  job_post_id            Int               @id @default(autoincrement())
+  employee_id            Int
+  company_id             Int
+  job_type_id            Int
+  category_id            Int
+  name                   String
+  job_title              String
+  job_url                String?
+  job_description        String?
+  candidate_requirements String?
+  benefits               String?
+  work_location          String?
+  work_time              String?
+  work_type              WorkType?
+  level                  String?
+  experience             String?
+  education              String?
+  salary                 String?
+  number_of_hires        Int?
+  deadline               DateTime?
+  created_date           DateTime          @default(now())
+  updated_date           DateTime
+  is_active              Boolean           @default(true)
+  JobBookmark            JobBookmark[]
+  Category               Category          @relation(fields: [category_id], references: [category_id])
+  Company                Company           @relation(fields: [company_id], references: [company_id])
+  Employee               Employee          @relation(fields: [employee_id], references: [employee_id])
+  JobType                JobType           @relation(fields: [job_type_id], references: [job_type_id])
+  JobPostActivity        JobPostActivity[]
+  JobPostSkill           JobPostSkill[]
+}
+
+model JobPostActivity {
+  application_id    Int                 @id @default(autoincrement())
+  seeker_id         Int
+  job_post_id       Int
+  apply_date        DateTime            @default(now())
+  current_stage     String?
+  status            ApplicationStatus
+  rejection_reason  String?
+  last_updated      DateTime
+  InterviewSchedule InterviewSchedule[]
+  JobPost           JobPost             @relation(fields: [job_post_id], references: [job_post_id])
+  Seeker            Seeker              @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model JobPostSkill {
+  job_post_id           Int
+  skill_id              Int
+  required_level        String?
+  min_experience_months Int?
+  is_mandatory          Boolean @default(false)
+  priority              Int?
+  JobPost               JobPost @relation(fields: [job_post_id], references: [job_post_id])
+  Skill                 Skill   @relation(fields: [skill_id], references: [skill_id])
+
+  @@id([job_post_id, skill_id])
+}
+
+model JobType {
+  job_type_id Int       @id @default(autoincrement())
+  job_type    String
+  JobPost     JobPost[]
+}
+
+model Message {
+  message_id      Int          @id @default(autoincrement())
+  conversation_id Int
+  sender_type     String
+  sender_id       Int
+  content         String
+  sent_at         DateTime     @default(now())
+  is_read         Boolean      @default(false)
+  Conversation    Conversation @relation(fields: [conversation_id], references: [conversation_id])
+}
+
+model Seeker {
+  seeker_id            Int                   @id
+  file_cv              String?
+  github_url           String?
+  linkedin_url         String?
+  portfolio_url        String?
+  created_date         DateTime              @default(now())
+  updated_date         DateTime
+  CompanyFollow        CompanyFollow[]
+  CompanySeekerLike    CompanySeekerLike[]
+  Conversation         Conversation[]
+  InterviewSchedule    InterviewSchedule[]
+  JobBookmark          JobBookmark[]
+  JobPostActivity      JobPostActivity[]
+  User                 User                  @relation(fields: [seeker_id], references: [user_id])
+  SeekerCertificate    SeekerCertificate[]
+  SeekerEducation      SeekerEducation[]
+  SeekerExperience     SeekerExperience[]
+  SeekerProfileSummary SeekerProfileSummary?
+  SeekerProject        SeekerProject[]
+  SeekerSkill          SeekerSkill[]
+}
+
+model SeekerCertificate {
+  seeker_certificate_id Int       @id @default(autoincrement())
+  seeker_id             Int
+  certificate_name      String
+  certificate_type      String
+  issuing_organization  String?
+  score                 String?
+  issued_date           DateTime?
+  expired_date          DateTime?
+  certificate_file      String?
+  created_date          DateTime  @default(now())
+  updated_date          DateTime
+  Seeker                Seeker    @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model SeekerEducation {
+  education_id              Int       @id @default(autoincrement())
+  seeker_id                 Int
+  certificate_degree_name   String?
+  major                     String?
+  institute_university_name String?
+  starting_date             DateTime?
+  completion_date           DateTime?
+  cgpa                      Float?
+  created_date              DateTime  @default(now())
+  updated_date              DateTime
+  Seeker                    Seeker    @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model SeekerExperience {
+  experience_id  Int       @id @default(autoincrement())
+  seeker_id      Int
+  start_date     DateTime?
+  end_date       DateTime?
+  is_current_job Boolean   @default(false)
+  job_title      String?
+  company_name   String?
+  description    String?
+  created_date   DateTime  @default(now())
+  updated_date   DateTime
+  Seeker         Seeker    @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model SeekerProfileSummary {
+  seeker_id                  Int      @id
+  about_me                   String?
+  strengths                  String?
+  career_objective           String?
+  personality_traits         String?
+  work_attitude              String?
+  preferred_work_environment String?
+  created_date               DateTime @default(now())
+  updated_date               DateTime
+  Seeker                     Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model SeekerProject {
+  project_id          Int       @id @default(autoincrement())
+  seeker_id           Int
+  project_name        String
+  project_description String?
+  role                String?
+  technologies        String?
+  start_date          DateTime?
+  end_date            DateTime?
+  project_url         String?
+  created_date        DateTime  @default(now())
+  updated_date        DateTime
+  Seeker              Seeker    @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model SeekerSkill {
+  seeker_skill_id   Int      @id @default(autoincrement())
+  seeker_id         Int
+  skill_id          Int
+  experience_months Int?
+  created_date      DateTime @default(now())
+  updated_date      DateTime
+  Seeker            Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+  Skill             Skill    @relation(fields: [skill_id], references: [skill_id])
+
+  @@unique([seeker_id, skill_id])
+}
+
+model Skill {
+  skill_id     Int            @id @default(autoincrement())
+  skill_name   String         @unique
+  skill_type   SkillType
+  created_date DateTime       @default(now())
+  updated_date DateTime
+  JobPostSkill JobPostSkill[]
+  SeekerSkill  SeekerSkill[]
+}
+
+model User {
+  user_id           Int       @id @default(autoincrement())
+  email             String    @unique
+  password          String
+  first_name        String?
+  last_name         String?
+  phone             String?
+  gender            String?
+  user_image        String?
+  role              UserRole
+  is_active         Boolean   @default(true)
+  registration_date DateTime  @default(now())
+  Employee          Employee?
+  Seeker            Seeker?
+}
+
+enum ApplicationStatus {
+  PENDING
+  PASSED
+  FAILED
+  HIRED
+  REJECTED
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum SkillType {
+  TECHNICAL
+  SOFT
+  LANGUAGE
+}
+
+enum UserRole {
+  ADMIN
+  SEEKER
+  EMPLOYEE
+}
+
+enum WorkType {
+  ONSITE
+  REMOTE
+  HYBRID
+}
