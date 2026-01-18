@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { PrismaService } from '../prisma.service.js';
+import { MailsModule } from '../mails/mails.module.js';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { PrismaService } from '../prisma.service.js';
         'default-secret-key-change-in-production',
       signOptions: { expiresIn: '1h' },
     }),
+    MailsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, PrismaService],
