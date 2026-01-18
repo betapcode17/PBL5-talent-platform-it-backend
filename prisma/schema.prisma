@@ -7,6 +7,20 @@ datasource db {
   provider = "postgresql"
 }
 
+
+
+
+model Token {
+  token_id   Int      @id @default(autoincrement())
+  user_id    Int
+  token      String   @unique
+  created_at DateTime @default(now())
+
+  User User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+
+
 model Category {
   category_id Int       @id @default(autoincrement())
   name        String
@@ -317,8 +331,7 @@ model User {
   user_id           Int       @id @default(autoincrement())
   email             String    @unique
   password          String
-  first_name        String?
-  last_name         String?
+  full_name         String?
   phone             String?
   gender            String?
   user_image        String?
@@ -327,6 +340,8 @@ model User {
   registration_date DateTime  @default(now())
   Employee          Employee?
   Seeker            Seeker?
+
+  tokens Token[]
 }
 
 enum ApplicationStatus {

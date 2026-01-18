@@ -22,11 +22,7 @@ export class RegisterDto {
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   @IsNotEmpty()
-  first_name: string;
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  @IsNotEmpty()
-  last_name: string;
+  full_name: string;
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   @IsOptional()
