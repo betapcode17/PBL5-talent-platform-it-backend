@@ -3,6 +3,9 @@ import { AuthService } from './auth.service.js';
 import { RegisterDto, UserRole } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ApiBody, ApiOperation } from '@nestjs/swagger';
+import { GoogleLoginDto } from './dto/google-login.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -89,5 +92,40 @@ export class AuthController {
   @Post('refresh-token')
   refresh(@Body('refresh_token') token: string) {
     return this.authService.refreshToken(token);
+  }
+  @ApiOperation({ summary: 'Đăng nhập bằng google' })
+  @Post('google')
+  @ApiBody({
+    type: GoogleLoginDto,
+    examples: {
+      example: {
+        value: {
+          credential: 'GOOGLE_ID_TOKEN',
+        },
+      },
+    },
+  })
+  googleLogin(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleOneTapLogin(dto.credential);
+  }
+  @ApiOperation({ summary: 'Quên mật khẩu' })
+  @ApiBody({
+    type: ForgotPasswordDto,
+    examples: {
+      example: {
+        value: {
+          email: 'johndoe@example.com',
+        },
+      },
+    },
+  })
+  @Post('forgot-password')
+  forgot(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+  @ApiOperation({ summary: 'Reset lại mật khẩu' })
+  @Post('reset-password')
+  reset(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 }

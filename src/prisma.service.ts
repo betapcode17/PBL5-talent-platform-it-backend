@@ -5,6 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 @Injectable()
 export class PrismaService extends PrismaClient {
+  resetToken: any;
   constructor(private configService: ConfigService) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const dbUrl = configService.get<string>('DATABASE_URL');
