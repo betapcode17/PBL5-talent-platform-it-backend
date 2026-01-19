@@ -9,7 +9,7 @@ import { LoginDto } from './dto/login.dto.js';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto.js';
-import { JwtPayload } from './interface/JwtPayload.js';
+import type { JwtPayload } from './interface/JwtPayload.js';
 import { OAuth2Client } from 'google-auth-library';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { randomUUID } from 'crypto';
@@ -39,13 +39,11 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
-    const payload = {
+    const payload: JwtPayload = {
       sub: user.user_id,
       email: user.email,
-      full_name: user.full_name,
       role: user.role,
     };
-
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: process.env.ACCESS_TOKEN_SECRET,
       expiresIn: '1h',
@@ -192,16 +190,12 @@ export class AuthService {
         },
       });
     }
-    const jwtPayload = {
-      id: user.user_id,
-      email: user.email,
-      role: user.role,
-    };
-    const accessToken = await this.jwtService.signAsync(jwtPayload, {
+
+    const accessToken = await this.jwtService.signAsync(payload, {
       secret: process.env.ACCESS_TOKEN_SECRET,
       expiresIn: '1h',
     });
-    const refreshToken = await this.jwtService.signAsync(jwtPayload, {
+    const refreshToken = await this.jwtService.signAsync(payload, {
       secret: process.env.REFRESH_TOKEN_SECRET,
       expiresIn: '7d',
     });

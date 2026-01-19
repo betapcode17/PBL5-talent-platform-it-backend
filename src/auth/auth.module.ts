@@ -2,8 +2,9 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
-import { PrismaService } from '../prisma.service.js';
 import { MailsModule } from '../mails/mails.module.js';
+
+import { JwtStrategy } from './jwt.strategy.js';
 
 @Module({
   imports: [
@@ -17,6 +18,6 @@ import { MailsModule } from '../mails/mails.module.js';
     MailsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, PrismaService],
+  providers: [AuthService, JwtStrategy],
 })
 export class AuthModule {}

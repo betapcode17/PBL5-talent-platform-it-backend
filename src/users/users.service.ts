@@ -1,26 +1,31 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma.service.js';
+import { UserResponseDto } from './dto/user-response.dto.js';
+// import { UpdateUserDto } from './dto/update-user.dto.js';
 
 @Injectable()
 export class UsersService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
-  }
+  constructor(private prisma: PrismaService) {}
+  async getMe(userId: number): Promise<UserResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userId },
+      select: {
+        user_id: true,
+        email: true,
+        full_name: true,
+        role: true,
+        is_active: true,
+        gender: true,
+        phone: true,
+        user_image: true,
+        registration_date: true,
+      },
+    });
 
-  findAll() {
-    return `This action returns all users`;
-  }
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
-  }
-
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+    return user;
   }
 }

@@ -84,6 +84,18 @@ export class AuthController {
     return this.authService.login(dto);
   }
   @ApiOperation({ summary: 'Đăng xuất' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        refresh_token: {
+          type: 'string',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
+      },
+      required: ['refresh_token'],
+    },
+  })
   @Post('logout')
   logout(@Body('refresh_token') token: string) {
     return this.authService.logout(token);
@@ -125,6 +137,17 @@ export class AuthController {
   }
   @ApiOperation({ summary: 'Reset lại mật khẩu' })
   @Post('reset-password')
+  @ApiBody({
+    type: ResetPasswordDto,
+    examples: {
+      example: {
+        value: {
+          token: 'RESET_PASSWORD_TOKEN',
+          new_password: 'NewPassword@123',
+        },
+      },
+    },
+  })
   reset(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
