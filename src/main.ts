@@ -16,7 +16,7 @@ async function bootstrap() {
     .setTitle('IT JOB')
     .setDescription('The IT JOB API description')
     .setVersion('1.0')
-    .addBearerAuth() // 👈 QUAN TRỌNG nếu dùng JWT
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
