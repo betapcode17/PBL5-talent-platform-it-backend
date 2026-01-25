@@ -73,7 +73,7 @@ export class AuthController {
       admin: {
         summary: 'Admin',
         value: {
-          email: 'admin@example.com',
+          email: 'admin@system.com',
           password: 'Admin@123',
         } as LoginDto,
       },

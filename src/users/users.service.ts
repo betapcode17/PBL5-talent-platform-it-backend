@@ -36,20 +36,48 @@ export class UsersService {
 
     return user;
   }
-  async update(userId: number, dto: UpdateUserDto): Promise<any> {
-    if (dto.email) {
-      const existed = await this.prisma.user.findUnique({
+  async update(userId: number, dto: UpdateUserDto) {
+    if (!dto) {
+      throw new BadRequestException('Body không được để trống');
+    }
+
+    const existedUser = await this.prisma.user.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!existedUser) {
+      throw new ConflictException('User không tồn tại');
+    }
+
+    // ✅ chỉ check email khi có giá trị hợp lệ
+    if (dto.email && dto.email.trim() !== '') {
+      const existedEmail = await this.prisma.user.findUnique({
         where: { email: dto.email },
       });
-      if (existed && existed.user_id !== userId) {
+
+      if (existedEmail && existedEmail.user_id !== userId) {
         throw new ConflictException('Email đã tồn tại');
       }
     }
-    await this.prisma.user.update({
+
+    // ✅ lọc field rỗng
+    const updateData = Object.fromEntries(
+      Object.entries(dto).filter(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ([_, value]) => value !== undefined && value !== null && value !== '',
+      ),
+    );
+
+    if (Object.keys(updateData).length === 0) {
+      throw new BadRequestException('Không có dữ liệu để cập nhật');
+    }
+
+    return this.prisma.user.update({
       where: { user_id: userId },
-      data: dto,
+      data: updateData,
     });
   }
+
   async activateUser(userId: number) {
     return this.prisma.user.update({
       where: { user_id: userId },
@@ -57,10 +85,6 @@ export class UsersService {
     });
   }
   async deactivateUser(id: number) {
-    await this.prisma.token.deleteMany({
-      where: { user_id: id },
-    });
-
     return this.prisma.user.update({
       where: { user_id: id },
       data: { is_active: false },

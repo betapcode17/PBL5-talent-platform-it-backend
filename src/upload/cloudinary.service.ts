@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import cloudinary from './cloudinary.config.js';
-
+console.log('Cloudinary config:', cloudinary.config());
 @Injectable()
 export class CloudinaryService {
   async uploadAvatar(file: Express.Multer.File) {

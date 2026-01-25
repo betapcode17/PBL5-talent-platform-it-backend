@@ -13,7 +13,12 @@ import { UsersService } from './users.service.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ReqUser } from '../common/decorators/req-user.decorator.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
-import { ApiBearerAuth, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { imageUploadOptions } from '../upload/multer.options.js';
 
@@ -21,22 +26,45 @@ import { imageUploadOptions } from '../upload/multer.options.js';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getMe(@ReqUser() user) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
     return this.usersService.getMe(user.sub);
   }
+
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Cập nhật profile user' })
+  @ApiBody({
+    type: UpdateUserDto,
+    examples: {
+      example1: {
+        value: {
+          email: '',
+          full_name: 'Sigma',
+          gender: '',
+          phone: '',
+        },
+      },
+    },
+  })
   @Put('me')
   updateMe(@ReqUser() user, @Body() dto: UpdateUserDto) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
     return this.usersService.update(user.sub, dto);
   }
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/active')
   active(@Query('id') id: number) {
     return this.usersService.activateUser(+id);
   }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/deactivate')
   deactivate(@Query('id') id: number) {
     return this.usersService.deactivateUser(+id);
@@ -50,6 +78,17 @@ export class UsersController {
     return this.usersService.getUsers(+page, +limit, role);
   }
   @ApiOperation({ summary: 'Upload avatar user' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @UseGuards(JwtAuthGuard)
