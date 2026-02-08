@@ -1,34 +1,24 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { MessageService } from './message.service';
-import { CreateMessageDto } from './dto/create-message.dto';
-import { UpdateMessageDto } from './dto/update-message.dto';
+import { Controller, UseGuards, Post, Req, Body } from '@nestjs/common';
+import { MessageService } from './message.service.js';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { EmployeeChatGuard, JwtAuthGuard } from 'src/jwt/jwt-auth.guard.js';
+import { SendMessageDto } from './dto/send-message.dto.js';
 
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, EmployeeChatGuard)
 @Controller('message')
 export class MessageController {
   constructor(private readonly messageService: MessageService) {}
 
   @Post()
-  create(@Body() createMessageDto: CreateMessageDto) {
-    return this.messageService.create(createMessageDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.messageService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.messageService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMessageDto: UpdateMessageDto) {
-    return this.messageService.update(+id, updateMessageDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.messageService.remove(+id);
+  send(@Req() req, @Body() dto: SendMessageDto) {
+    return this.messageService.sendMessage(
+      dto.chatId,
+      dto.content,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      req.user.role === 'SEEKER' ? 'SEEKER' : 'EMPLOYEE',
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+      req.user.userId,
+    );
   }
 }
