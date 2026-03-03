@@ -14,6 +14,8 @@ model Token {
   token_id   Int      @id @default(autoincrement())
   user_id    Int
   token      String   @unique
+  type       String   @default("REFRESH") // REFRESH or RESET
+  expiresAt  DateTime?
   created_at DateTime @default(now())
 
   User User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)

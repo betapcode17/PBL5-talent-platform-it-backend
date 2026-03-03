@@ -1,11 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { RegisterDto, UserRole } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ApiBody, ApiOperation } from '@nestjs/swagger';
 import { GoogleLoginDto } from './dto/google-login.dto.js';
-import { GithubLoginDto } from './dto/github-login.dto.js';
-import { FacebookLoginDto } from './dto/facebook-login.dto.js';
+import { OAuthCodeDto } from './dto/oauth-code.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
@@ -126,35 +125,48 @@ export class AuthController {
   @ApiOperation({ summary: 'Đăng nhập bằng Github' })
   @Post('github')
   @ApiBody({
-    type: GithubLoginDto,
+    type: OAuthCodeDto,
     examples: {
       example: {
         value: {
-          access_token: 'GITHUB_ACCESS_TOKEN',
+          code: 'GITHUB_AUTHORIZATION_CODE',
         },
       },
     },
   })
-  githubLogin(@Body() dto: GithubLoginDto) {
-    return this.authService.githubLogin(dto.access_token);
+  async githubLogin(@Body() dto: OAuthCodeDto) {
+    const accessToken = await this.exchangeGithubCode(dto.code);
+    return this.authService.githubLogin(accessToken);
   }
 
   @ApiOperation({ summary: 'Đăng nhập bằng Facebook' })
   @Post('facebook')
   @ApiBody({
-    type: FacebookLoginDto,
+    type: OAuthCodeDto,
     examples: {
       example: {
         value: {
-          access_token: 'FACEBOOK_ACCESS_TOKEN',
+          code: 'FACEBOOK_AUTHORIZATION_CODE',
         },
       },
     },
   })
-  facebookLogin(@Body() dto: FacebookLoginDto) {
-    return this.authService.facebookLogin(dto.access_token);
+  async facebookLogin(@Body() dto: OAuthCodeDto) {
+    const accessToken = await this.exchangeFacebookCode(dto.code);
+    return this.authService.facebookLogin(accessToken);
   }
 
+  @Post('github/callback')
+  async githubCallback(@Body() dto: OAuthCodeDto) {
+    const accessToken = await this.exchangeGithubCode(dto.code);
+    return this.authService.githubLogin(accessToken);
+  }
+
+  @Post('facebook/callback')
+  async facebookCallback(@Body() dto: OAuthCodeDto) {
+    const accessToken = await this.exchangeFacebookCode(dto.code);
+    return this.authService.facebookLogin(accessToken);
+  }
   @ApiOperation({ summary: 'Quên mật khẩu' })
   @ApiBody({
     type: ForgotPasswordDto,
@@ -178,12 +190,96 @@ export class AuthController {
       example: {
         value: {
           token: 'RESET_PASSWORD_TOKEN',
-          new_password: 'NewPassword@123',
+          password: 'NewPassword@123',
         },
       },
     },
   })
   reset(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  private async exchangeGithubCode(code: string): Promise<string> {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new BadRequestException(
+        'Thiếu cấu hình GITHUB_CLIENT_ID hoặc GITHUB_CLIENT_SECRET',
+      );
+    }
+
+    const response = await fetch(
+      'https://github.com/login/oauth/access_token',
+      {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new BadRequestException('Không thể exchange Github code');
+    }
+
+    const payload = (await response.json()) as {
+      access_token?: string;
+      error?: string;
+      error_description?: string;
+    };
+
+    if (!payload.access_token) {
+      throw new BadRequestException(
+        payload.error_description ||
+          payload.error ||
+          'Github code không hợp lệ',
+      );
+    }
+
+    return payload.access_token;
+  }
+
+  private async exchangeFacebookCode(code: string): Promise<string> {
+    const clientId = process.env.FACEBOOK_APP_ID;
+    const clientSecret = process.env.FACEBOOK_APP_SECRET;
+    const redirectUri = process.env.FACEBOOK_REDIRECT_URI;
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      throw new BadRequestException(
+        'Thiếu cấu hình FACEBOOK_APP_ID, FACEBOOK_APP_SECRET hoặc FACEBOOK_REDIRECT_URI',
+      );
+    }
+
+    const url = new URL('https://graph.facebook.com/oauth/access_token');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('client_secret', clientSecret);
+    url.searchParams.set('redirect_uri', redirectUri);
+    url.searchParams.set('code', code);
+
+    const response = await fetch(url.toString());
+
+    if (!response.ok) {
+      throw new BadRequestException('Không thể exchange Facebook code');
+    }
+
+    const payload = (await response.json()) as {
+      access_token?: string;
+      error?: { message?: string };
+    };
+
+    if (!payload.access_token) {
+      throw new BadRequestException(
+        payload.error?.message || 'Facebook code không hợp lệ',
+      );
+    }
+
+    return payload.access_token;
   }
 }

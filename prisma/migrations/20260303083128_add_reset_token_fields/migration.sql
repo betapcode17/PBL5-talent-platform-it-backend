@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Token" ADD COLUMN     "expiresAt" TIMESTAMP(3),
+ADD COLUMN     "type" TEXT NOT NULL DEFAULT 'REFRESH';

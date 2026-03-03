@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class GithubLoginDto {
+export class OAuthCodeDto {
   @IsString()
   @IsNotEmpty()
-  access_token: string;
+  code: string;
 }

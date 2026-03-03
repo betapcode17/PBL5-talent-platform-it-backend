@@ -62,7 +62,6 @@ export class AuthService {
       expiresIn: '7d',
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     await this.prisma.token.create({
       data: {
         user_id: user.user_id,
@@ -121,7 +120,6 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const storedToken = await this.prisma.token.findUnique({
       where: { token: refreshToken },
       include: { User: true },
@@ -155,7 +153,6 @@ export class AuthService {
   }
 
   async logout(refreshToken: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     await this.prisma.token.deleteMany({
       where: { token: refreshToken },
     });
@@ -350,16 +347,17 @@ export class AuthService {
     }
 
     const token = randomUUID();
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     await this.prisma.token.create({
       data: {
         token,
         user_id: user.user_id,
+        type: 'RESET',
+        expiresAt,
       },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.mailsService.sendForgotPassword(
       user.email,
       user.full_name || '',
@@ -369,35 +367,33 @@ export class AuthService {
     return { message: 'Reset link sent' };
   }
   async resetPassword(dto: ResetPasswordDto) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const record = await this.prisma.resetToken.findUnique({
+    if (!dto.password || typeof dto.password !== 'string') {
+      throw new BadRequestException('Password phải là string hợp lệ');
+    }
+
+    const record = await this.prisma.token.findUnique({
       where: { token: dto.token },
       include: { User: true },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (!record || record.used) {
+    if (!record || record.type !== 'RESET') {
       throw new BadRequestException('Token không hợp lệ');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (record.expiresAt < new Date()) {
+    if (record.expiresAt && record.expiresAt < new Date()) {
       throw new BadRequestException('Token đã hết hạn');
     }
 
     const hashed = await bcrypt.hash(dto.password, 10);
 
     await this.prisma.user.update({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       where: { user_id: record.user_id },
       data: { password: hashed },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    await this.prisma.resetToken.update({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      where: { id: record.id },
-      data: { used: true },
+    // Delete reset token after use
+    await this.prisma.token.delete({
+      where: { token_id: record.token_id },
     });
 
     return { message: 'Password reset successful' };
