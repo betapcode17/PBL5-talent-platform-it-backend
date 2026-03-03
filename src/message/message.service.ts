@@ -80,4 +80,13 @@ export class MessageService {
       data: { is_read: true },
     });
   }
+  async editMessage(messageId: number, newContent: string) {
+    if (newContent.trim().length === 0) {
+      throw new BadRequestException('Nội dung tin nhắn không được để trống');
+    }
+    return this.prisma.message.update({
+      where: { message_id: messageId },
+      data: { content: newContent.trim() },
+    });
+  }
 }
