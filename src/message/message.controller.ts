@@ -13,6 +13,7 @@ import { MessageService } from './message.service.js';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
 import { SendMessageDto } from './dto/send-message.dto.js';
+import { EditMessageDto } from './dto/edit-message.dto.js';
 
 interface IUserPayload {
   user_id: number;
@@ -53,5 +54,10 @@ export class MessageController {
     @Query('offset', ParseIntPipe) offset: number = 0,
   ) {
     return this.messageService.getMessages(chatId, limit, offset);
+  }
+
+  @Post('edit')
+  async editMessage(dto: EditMessageDto) {
+    return this.messageService.editMessage(dto.messageId, dto.newContent);
   }
 }

@@ -18,7 +18,9 @@ import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
 @Injectable()
 export class AuthService {
-  private googleClient: OAuth2Client;
+  private readonly googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+  );
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -157,20 +159,24 @@ export class AuthService {
     };
   }
   async googleOneTapLogin(credential: string) {
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      throw new BadRequestException('GOOGLE_CLIENT_ID chưa được cấu hình');
+    }
+
     // Verify token từ Google
     const ticket = await this.googleClient.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
-    const payload = ticket.getPayload();
-    if (!payload || !payload.email) {
+    const googlePayload = ticket.getPayload();
+    if (!googlePayload || !googlePayload.email) {
       throw new ForbiddenException('Google token Invalid');
     }
 
-    const email = payload.email;
-    const fullName = payload.name || '';
-    const avatar = payload.picture || '';
+    const email = googlePayload.email;
+    const fullName = googlePayload.name || '';
+    const avatar = googlePayload.picture || '';
 
     // Tim user
     let user = await this.prisma.user.findUnique({
@@ -191,11 +197,17 @@ export class AuthService {
       });
     }
 
-    const accessToken = await this.jwtService.signAsync(payload, {
+    const jwtPayload: JwtPayload = {
+      sub: user.user_id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = await this.jwtService.signAsync(jwtPayload, {
       secret: process.env.ACCESS_TOKEN_SECRET,
       expiresIn: '1h',
     });
-    const refreshToken = await this.jwtService.signAsync(payload, {
+    const refreshToken = await this.jwtService.signAsync(jwtPayload, {
       secret: process.env.REFRESH_TOKEN_SECRET,
       expiresIn: '7d',
     });
