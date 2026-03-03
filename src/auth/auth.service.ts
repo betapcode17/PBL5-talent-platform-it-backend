@@ -16,6 +16,12 @@ import { randomUUID } from 'crypto';
 import { MailsService } from '../mails/mails.service.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
+type SocialProfile = {
+  email: string;
+  fullName: string;
+  avatar: string;
+};
+
 @Injectable()
 export class AuthService {
   private readonly googleClient = new OAuth2Client(
@@ -178,18 +184,120 @@ export class AuthService {
     const fullName = googlePayload.name || '';
     const avatar = googlePayload.picture || '';
 
-    // Tim user
+    return this.socialLogin(email, fullName, avatar, 'Google');
+  }
+
+  async githubLogin(accessToken: string) {
+    const githubProfileResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'nestjs-auth-service',
+      },
+    });
+
+    if (!githubProfileResponse.ok) {
+      throw new ForbiddenException('Github access token invalid');
+    }
+
+    const githubProfile = (await githubProfileResponse.json()) as Partial<{
+      email: string;
+      name: string;
+      avatar_url: string;
+    }>;
+
+    let email = githubProfile.email || '';
+    const fullName = githubProfile.name || '';
+    const avatar = githubProfile.avatar_url || '';
+
+    if (!email) {
+      const githubEmailResponse = await fetch(
+        'https://api.github.com/user/emails',
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/vnd.github+json',
+            'User-Agent': 'nestjs-auth-service',
+          },
+        },
+      );
+
+      if (!githubEmailResponse.ok) {
+        throw new ForbiddenException('Không lấy được email từ Github');
+      }
+
+      const emails = (await githubEmailResponse.json()) as
+        | Array<{ email: string; primary: boolean; verified: boolean }>
+        | undefined;
+
+      const selectedEmail =
+        emails?.find((item) => item.primary && item.verified)?.email ||
+        emails?.find((item) => item.verified)?.email ||
+        emails?.[0]?.email ||
+        '';
+
+      email = selectedEmail;
+    }
+
+    if (!email) {
+      throw new ForbiddenException('Github account không có email khả dụng');
+    }
+
+    return this.socialLogin(email, fullName, avatar, 'Github');
+  }
+
+  async facebookLogin(accessToken: string) {
+    const url = new URL('https://graph.facebook.com/me');
+    url.searchParams.set('fields', 'id,name,email,picture.type(large)');
+    url.searchParams.set('access_token', accessToken);
+
+    const facebookProfileResponse = await fetch(url.toString());
+
+    if (!facebookProfileResponse.ok) {
+      throw new ForbiddenException('Facebook access token invalid');
+    }
+
+    const facebookProfile = (await facebookProfileResponse.json()) as Partial<{
+      email: string;
+      name: string;
+      picture: { data?: { url?: string } };
+    }>;
+
+    const email = facebookProfile.email || '';
+    const fullName = facebookProfile.name || '';
+    const avatar = facebookProfile.picture?.data?.url || '';
+
+    if (!email) {
+      throw new ForbiddenException('Facebook account chưa cung cấp email');
+    }
+
+    return this.socialLogin(email, fullName, avatar, 'Facebook');
+  }
+
+  private async socialLogin(
+    email: string,
+    fullName: string,
+    avatar: string,
+    providerName: string,
+  ) {
+    const socialProfile: SocialProfile = {
+      email,
+      fullName,
+      avatar,
+    };
+
     let user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: socialProfile.email },
     });
 
     if (!user) {
       user = await this.prisma.user.create({
         data: {
-          email,
-          full_name: fullName,
-          user_image: avatar,
-          password: '', // Google login không cần password
+          email: socialProfile.email,
+          full_name:
+            socialProfile.fullName || socialProfile.email.split('@')[0] || '',
+          user_image: socialProfile.avatar,
+          password: '',
           role: 'SEEKER',
           is_active: true,
           registration_date: new Date(),
@@ -211,14 +319,16 @@ export class AuthService {
       secret: process.env.REFRESH_TOKEN_SECRET,
       expiresIn: '7d',
     });
+
     await this.prisma.token.create({
       data: {
         user_id: user.user_id,
         token: refreshToken,
       },
     });
+
     return {
-      message: 'Login with Google success',
+      message: `Login with ${providerName} success`,
       accessToken,
       refreshToken,
       user: {

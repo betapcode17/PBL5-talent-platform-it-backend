@@ -4,6 +4,8 @@ import { RegisterDto, UserRole } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ApiBody, ApiOperation } from '@nestjs/swagger';
 import { GoogleLoginDto } from './dto/google-login.dto.js';
+import { GithubLoginDto } from './dto/github-login.dto.js';
+import { FacebookLoginDto } from './dto/facebook-login.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
@@ -120,6 +122,39 @@ export class AuthController {
   googleLogin(@Body() dto: GoogleLoginDto) {
     return this.authService.googleOneTapLogin(dto.credential);
   }
+
+  @ApiOperation({ summary: 'Đăng nhập bằng Github' })
+  @Post('github')
+  @ApiBody({
+    type: GithubLoginDto,
+    examples: {
+      example: {
+        value: {
+          access_token: 'GITHUB_ACCESS_TOKEN',
+        },
+      },
+    },
+  })
+  githubLogin(@Body() dto: GithubLoginDto) {
+    return this.authService.githubLogin(dto.access_token);
+  }
+
+  @ApiOperation({ summary: 'Đăng nhập bằng Facebook' })
+  @Post('facebook')
+  @ApiBody({
+    type: FacebookLoginDto,
+    examples: {
+      example: {
+        value: {
+          access_token: 'FACEBOOK_ACCESS_TOKEN',
+        },
+      },
+    },
+  })
+  facebookLogin(@Body() dto: FacebookLoginDto) {
+    return this.authService.facebookLogin(dto.access_token);
+  }
+
   @ApiOperation({ summary: 'Quên mật khẩu' })
   @ApiBody({
     type: ForgotPasswordDto,
