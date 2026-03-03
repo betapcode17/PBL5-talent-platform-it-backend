@@ -52,6 +52,8 @@ model Company {
   CompanySeekerLike     CompanySeekerLike[]
   Employee              Employee[]
   JobPost               JobPost[]
+
+  chats Chat[]
 }
 
 model CompanyFollow {
@@ -78,15 +80,22 @@ model CompanySeekerLike {
   Seeker                 Seeker   @relation(fields: [seeker_id], references: [seeker_id])
 }
 
-model Conversation {
-  conversation_id Int       @id @default(autoincrement())
+model Chat {
+  chat_id         Int       @id @default(autoincrement())
+
   seeker_id       Int
-  employee_id     Int
+  company_id      Int
+
   created_date    DateTime  @default(now())
   last_message_at DateTime?
-  Employee        Employee  @relation(fields: [employee_id], references: [employee_id])
+
   Seeker          Seeker    @relation(fields: [seeker_id], references: [seeker_id])
+  Company         Company   @relation(fields: [company_id], references: [company_id])
   Message         Message[]
+
+  @@unique([seeker_id, company_id]) 
+  @@index([company_id])
+  @@index([seeker_id])
 }
 
 model Employee {
@@ -95,7 +104,6 @@ model Employee {
   role              String
   joined_date       DateTime?
   CompanySeekerLike CompanySeekerLike[]
-  Conversation      Conversation[]
   Company           Company             @relation(fields: [company_id], references: [company_id])
   User              User                @relation(fields: [employee_id], references: [user_id])
   InterviewSchedule InterviewSchedule[]
@@ -200,15 +208,21 @@ model JobType {
 }
 
 model Message {
-  message_id      Int          @id @default(autoincrement())
-  conversation_id Int
-  sender_type     String
-  sender_id       Int
-  content         String
-  sent_at         DateTime     @default(now())
-  is_read         Boolean      @default(false)
-  Conversation    Conversation @relation(fields: [conversation_id], references: [conversation_id])
+  message_id  Int      @id @default(autoincrement())
+
+  chat_id     Int
+  sender_type SenderType
+  sender_id   Int     
+
+  content     String
+  sent_at     DateTime @default(now())
+  is_read     Boolean  @default(false)
+
+  Chat        Chat     @relation(fields: [chat_id], references: [chat_id])
+
+  @@index([chat_id])
 }
+
 
 model Seeker {
   seeker_id            Int                   @id
@@ -220,7 +234,7 @@ model Seeker {
   updated_date         DateTime
   CompanyFollow        CompanyFollow[]
   CompanySeekerLike    CompanySeekerLike[]
-  Conversation         Conversation[]
+  Chat         Chat[]
   InterviewSchedule    InterviewSchedule[]
   JobBookmark          JobBookmark[]
   JobPostActivity      JobPostActivity[]
@@ -374,4 +388,9 @@ enum WorkType {
   ONSITE
   REMOTE
   HYBRID
+}
+
+enum SenderType {
+  SEEKER
+  EMPLOYEE
 }

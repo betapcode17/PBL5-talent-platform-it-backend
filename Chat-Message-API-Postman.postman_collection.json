@@ -1,0 +1,657 @@
+{
+  "info": {
+    "name": "Chat & Message API Tests",
+    "description": "Complete API test collection for Chat and Message modules",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{seekerToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login as Seeker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('seekerToken', response.access_token);",
+                  "    pm.environment.set('seekerId', response.user.seeker_id);",
+                  "    pm.environment.set('seekerUserId', response.user.user_id);",
+                  "    console.log('✅ Seeker logged in successfully');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"seeker@example.com\", \"password\": \"password123\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login as Employee (TechCorp)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('employeeToken1', response.access_token);",
+                  "    pm.environment.set('employeeUserId1', response.user.user_id);",
+                  "    pm.environment.set('companyId1', response.user.company_id || 1);",
+                  "    console.log('✅ Employee 1 logged in successfully');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"hr@techcorp.com\", \"password\": \"password123\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login as Employee (StartupVN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('employeeToken2', response.access_token);",
+                  "    pm.environment.set('employeeUserId2', response.user.user_id);",
+                  "    pm.environment.set('companyId2', response.user.company_id || 2);",
+                  "    console.log('✅ Employee 2 logged in successfully');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"hr2@startupvn.com\", \"password\": \"password123\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat API - Seeker",
+      "item": [
+        {
+          "name": "Create Chat (Seeker → TechCorp)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('chat1Id', response.chat_id);",
+                  "    console.log('✅ Chat created:', response.chat_id);",
+                  "} else {",
+                  "    console.log('Response:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"company_id\": 1}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/chat",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat"]
+            }
+          }
+        },
+        {
+          "name": "Create Chat (Seeker → StartupVN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('chat2Id', response.chat_id);",
+                  "    console.log('✅ Chat created:', response.chat_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"company_id\": 2}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/chat",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat"]
+            }
+          }
+        },
+        {
+          "name": "Get My Chats (Seeker)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/chat/me",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat", "me"]
+            }
+          }
+        },
+        {
+          "name": "Get Chat Detail (Chat 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Chat Detail:', JSON.stringify(pm.response.json(), null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/chat/{{chat1Id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat", "{{chat1Id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Chat Detail (Chat 2)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/chat/{{chat2Id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat", "{{chat2Id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Message API - Send",
+      "item": [
+        {
+          "name": "Send Message (Seeker to Chat 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"chatId\": {{chat1Id}}, \"content\": \"Hello TechCorp! I'm interested in the Backend Developer position.\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/message",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"]
+            }
+          }
+        },
+        {
+          "name": "Send Message (Seeker to Chat 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"chatId\": {{chat2Id}}, \"content\": \"Hi StartupVN! Looking forward to discussing the Python role.\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/message",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"]
+            }
+          }
+        },
+        {
+          "name": "Send Message (Employee 1 Reply)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeToken1}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"chatId\": {{chat1Id}}, \"content\": \"Great! Your profile looks impressive. Can you share your experience?\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/message",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"]
+            }
+          }
+        },
+        {
+          "name": "Send Message (Employee 2 Reply)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeToken2}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"chatId\": {{chat2Id}}, \"content\": \"Perfect! Let's schedule an interview next week.\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/message",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Message API - Retrieve",
+      "item": [
+        {
+          "name": "Get Messages from Chat 1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/message?chatId={{chat1Id}}&limit=50&offset=0",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"],
+              "query": [
+                {
+                  "key": "chatId",
+                  "value": "{{chat1Id}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Messages from Chat 2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/message?chatId={{chat2Id}}&limit=50&offset=0",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"],
+              "query": [
+                {
+                  "key": "chatId",
+                  "value": "{{chat2Id}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Messages with Pagination (limit=10)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/message?chatId={{chat1Id}}&limit=10&offset=0",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"],
+              "query": [
+                {
+                  "key": "chatId",
+                  "value": "{{chat1Id}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Cases - Testing",
+      "item": [
+        {
+          "name": "Send Empty Message (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"chatId\": {{chat1Id}}, \"content\": \"\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/message",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"]
+            }
+          }
+        },
+        {
+          "name": "Send Oversized Message (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"chatId\": {{chat1Id}}, \"content\": \"Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqualsxbnsnsxxxxx\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/message",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["message"]
+            }
+          }
+        },
+        {
+          "name": "Access Chat Without Permission (Should Fail)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeToken2}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/chat/{{chat1Id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat", "{{chat1Id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Invalid Chat ID (Should Fail)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/chat/99999",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat", "99999"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "seekerToken",
+      "value": ""
+    },
+    {
+      "key": "seekerId",
+      "value": ""
+    },
+    {
+      "key": "seekerUserId",
+      "value": ""
+    },
+    {
+      "key": "employeeToken1",
+      "value": ""
+    },
+    {
+      "key": "employeeUserId1",
+      "value": ""
+    },
+    {
+      "key": "companyId1",
+      "value": ""
+    },
+    {
+      "key": "employeeToken2",
+      "value": ""
+    },
+    {
+      "key": "employeeUserId2",
+      "value": ""
+    },
+    {
+      "key": "companyId2",
+      "value": ""
+    },
+    {
+      "key": "chat1Id",
+      "value": ""
+    },
+    {
+      "key": "chat2Id",
+      "value": ""
+    }
+  ]
+}
