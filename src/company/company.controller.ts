@@ -21,7 +21,7 @@ import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiQuery } from '@nestjs/swagger';
 
 @Controller('companies')
 export class CompanyController {
@@ -29,7 +29,7 @@ export class CompanyController {
 
   @ApiOperation({ summary: 'Tạo company mới' })
   @ApiBody({ type: CreateCompanyDto })
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FileInterceptor('logo'))
   async create(
@@ -39,13 +39,20 @@ export class CompanyController {
   ) {
     // allow only admin or owner creation
     const user = req.user;
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'EMPLOYEE')) {
-      throw new ForbiddenException('Không có quyền tạo company');
-    }
+    // if (!user || (user.role !== 'ADMIN' && user.role !== 'EMPLOYEE')) {
+    //   throw new ForbiddenException('Không có quyền tạo company');
+    // }
     return this.companyService.create(dto, user, logo);
   }
 
   @ApiOperation({ summary: 'Lấy danh sách companies (filter, pagination)' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number' })
+  @ApiQuery({
+    name: 'industry',
+    required: false,
+    description: 'Filter by industry',
+  })
+  @ApiQuery({ name: 'q', required: false, description: 'Search keyword' })
   @Get()
   async findAll(
     @Query('page') page = '1',

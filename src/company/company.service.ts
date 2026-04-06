@@ -7,12 +7,18 @@ import {
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import { PrismaService } from '../prisma.service.js';
+import { CloudinaryService } from '../upload/cloudinary.service.js';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 
+import { Express } from 'express';
+
 @Injectable()
 export class CompanyService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cloudinary: CloudinaryService,
+  ) {}
 
   private async saveFileLocally(file: Express.Multer.File) {
     const uploadsDir = join(process.cwd(), 'uploads');
@@ -239,5 +245,32 @@ export class CompanyService {
   async remove(id: number) {
     await this.prisma.company.delete({ where: { company_id: id } });
     return { message: 'Deleted' };
+  }
+
+  async uploadAvatar(userId: number, file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('File không tồn tại');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Company không tồn tại');
+    }
+
+    // Upload cloudinary
+    const { url } = await this.cloudinary.uploadAvatar(file);
+
+    // Update DB
+    await this.prisma.user.update({
+      where: { user_id: userId },
+      data: { user_image: url },
+    });
+
+    return {
+      avatarUrl: url,
+    };
   }
 }
