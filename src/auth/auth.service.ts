@@ -16,6 +16,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { randomUUID } from 'crypto';
 import { MailsService } from '../mails/mails.service.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { EmployeeCompanyRegisterDto } from './dto/employee-company-register.dto.js';
 
 type SocialProfile = {
   email: string;
@@ -418,5 +419,45 @@ export class AuthService {
     );
 
     return { message: 'Password reset successful' };
+  }
+  async getMe(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userId },
+      select: {
+        user_id: true,
+        email: true,
+        full_name: true,
+        role: true,
+        is_active: true,
+        gender: true,
+        phone: true,
+        user_image: true,
+        registration_date: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User không tồn tại');
+    }
+
+    return {
+      id: user.user_id,
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role,
+      is_active: user.is_active,
+      gender: user.gender,
+      phone: user.phone,
+      user_image: user.user_image,
+      registration_date: user.registration_date,
+    };
+  }
+
+  async employeeCompanyRegister(dto: EmployeeCompanyRegisterDto) {
+    await this.mailsService.sendEmployeeCompanyRegisterMail(dto);
+
+    return {
+      message: 'Đã gửi thông tin đăng ký nhân viên đến hệ thống',
+    };
   }
 }
