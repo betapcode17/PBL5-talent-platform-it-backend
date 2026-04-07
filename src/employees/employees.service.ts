@@ -2,34 +2,67 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
 import { PrismaService } from '../prisma.service.js';
-import { NotFoundError } from 'rxjs';
+import { MailsService } from '../mails/mails.service.js';
+import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailsService: MailsService,
+  ) {}
 
   async create(dto: CreateEmployeeDto) {
     const user = await this.prisma.user.findUnique({
-      where: { user_id: dto.employee_id },
+      where: { email: dto.email },
     });
-    if (!user) {
-      throw new NotFoundError('user không tồn tại');
+    if (user) {
+      throw new ConflictException('user đã tồn tại');
     }
-    const existed = await this.prisma.employee.findUnique({
-      where: { employee_id: dto.employee_id },
+    const company = await this.prisma.company.findUnique({
+      where: { company_id: dto.company_id },
     });
-    if (existed) {
-      throw new ConflictException('employee đã tồn tại');
+
+    if (!company) {
+      throw new ConflictException('company không tồn tại');
     }
 
-    await this.prisma.employee.create({
-      data: {
-        employee_id: dto.employee_id,
-        company_id: dto.company_id,
-        role: dto.role,
-      },
+    const rawPassword = randomUUID().replace(/-/g, '').slice(0, 12);
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          full_name: dto.full_name,
+          phone: dto.phone,
+          email: dto.email,
+          password: hashedPassword,
+          role: 'EMPLOYEE',
+          is_active: true,
+          registration_date: new Date(),
+        },
+      });
+
+      const employee = await tx.employee.create({
+        data: {
+          company_id: dto.company_id,
+          joined_date: dto.joined_date ?? new Date(),
+          employee_id: createdUser.user_id,
+          role: dto.role,
+        },
+      });
+
+      return { createdUser, employee };
     });
-    return { message: 'Created successfully' };
+
+    this.mailsService.sendNewAccountToEmployee(dto.email, rawPassword);
+
+    return {
+      message: 'Created successfully and account email sent',
+      user_id: created.createdUser.user_id,
+      employee_id: created.employee.employee_id,
+    };
   }
 
   findAll() {
@@ -42,7 +75,7 @@ export class EmployeesService {
 
   async update(employee_id: number, dto: UpdateEmployeeDto) {
     const existed = await this.prisma.employee.findUnique({
-      where: { employee_id: dto.employee_id },
+      where: { employee_id },
     });
     if (!existed) {
       throw new ConflictException('employee không tồn tại');
