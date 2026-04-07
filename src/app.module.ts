@@ -8,10 +8,10 @@ import { PrismaModule } from '../prisma/prisma.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
 import { ChatModule } from './chat/chat.module.js';
 import { MessageModule } from './message/message.module.js';
+import { JobsModule } from './jobs/jobs.module.js';
 
 @Module({
   imports: [
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -22,6 +22,7 @@ import { MessageModule } from './message/message.module.js';
     EmployeesModule,
     ChatModule,
     MessageModule,
+    JobsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
