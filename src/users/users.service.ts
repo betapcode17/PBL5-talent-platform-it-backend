@@ -49,7 +49,6 @@ export class UsersService {
       throw new ConflictException('User không tồn tại');
     }
 
-    // ✅ chỉ check email khi có giá trị hợp lệ
     if (dto.email && dto.email.trim() !== '') {
       const existedEmail = await this.prisma.user.findUnique({
         where: { email: dto.email },
@@ -60,7 +59,6 @@ export class UsersService {
       }
     }
 
-    // ✅ lọc field rỗng
     const updateData = Object.fromEntries(
       Object.entries(dto).filter(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -107,7 +105,10 @@ export class UsersService {
 
     return { users, total };
   }
-  async uploadAvatar(userId: number, file: Express.Multer.File) {
+  async uploadAvatar(
+    userId: number,
+    file: Parameters<CloudinaryService['uploadAvatar']>[0],
+  ) {
     if (!file) {
       throw new BadRequestException('File không tồn tại');
     }

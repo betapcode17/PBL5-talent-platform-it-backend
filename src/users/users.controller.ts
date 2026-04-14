@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { imageUploadOptions } from '../upload/multer.options.js';
+import { CloudinaryService } from 'src/upload/cloudinary.service.js';
 
 @Controller('users')
 export class UsersController {
@@ -95,7 +96,7 @@ export class UsersController {
   @Put('me/avatar')
   @UseInterceptors(FileInterceptor('file', imageUploadOptions))
   uploadAvatar(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: Parameters<CloudinaryService['uploadAvatar']>[0],
     @ReqUser() user: any,
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access

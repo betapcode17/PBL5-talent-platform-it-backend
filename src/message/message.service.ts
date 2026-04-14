@@ -4,10 +4,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
+import { ChatGateway } from '../chat/gateway/chat.gateway.js';
 
 @Injectable()
 export class MessageService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   async sendMessage(
     chatId: number,
@@ -51,6 +55,14 @@ export class MessageService {
       }),
     ]);
 
+    // Broadcast message via WebSocket to all connected clients in this chat room
+    try {
+      this.chatGateway.broadcastMessage(message);
+    } catch (err) {
+      console.error('Failed to broadcast message via WebSocket:', err);
+      // Don't fail the request if WebSocket broadcast fails, message is still saved
+    }
+
     return message;
   }
 
@@ -58,7 +70,7 @@ export class MessageService {
     if (limit > 100) limit = 100; // Prevent excessive data fetching
     if (offset < 0) offset = 0;
 
-    return this.prisma.message.findMany({
+    const messages = await this.prisma.message.findMany({
       where: { chat_id: chatId },
       take: limit,
       skip: offset,
@@ -72,6 +84,23 @@ export class MessageService {
         is_read: true,
       },
     });
+
+    // Bổ sung tên employee nếu sender_type là EMPLOYEE
+    return await Promise.all(
+      messages.map(async (msg) => {
+        if (msg.sender_type === 'EMPLOYEE') {
+          const employee = await this.prisma.employee.findUnique({
+            where: { employee_id: msg.sender_id },
+            select: {
+              employee_id: true,
+              User: { select: { full_name: true } },
+            },
+          });
+          return { ...msg, employee_name: employee?.User?.full_name || null };
+        }
+        return msg;
+      }),
+    );
   }
 
   async markAsRead(messageId: number) {

@@ -10,6 +10,47 @@ import { CreateChatDto } from './dto/create-chat.dto.js';
 export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getCompanyIdByEmployeeId(employeeId: number): Promise<number> {
+    const employee = await this.prisma.employee.findUnique({
+      where: { employee_id: employeeId },
+      select: { company_id: true },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Nhân viên không tồn tại');
+    }
+
+    return employee.company_id;
+  }
+
+  async getAllChatOfCompany(company_id: number) {
+    const chats = await this.prisma.chat.findMany({
+      where: { company_id: company_id },
+      include: {
+        Seeker: {
+          include: {
+            User: {
+              select: {
+                user_id: true,
+                full_name: true,
+              },
+            },
+          },
+        },
+        Message: {
+          orderBy: { sent_at: 'asc' },
+          select: {
+            message_id: true,
+            content: true,
+            sent_at: true,
+            sender_type: true,
+          },
+        },
+      },
+      orderBy: { last_message_at: 'asc' },
+    });
+    return chats;
+  }
   async getAllChatOfSeeker(seeker_id: number) {
     const chats = await this.prisma.chat.findMany({
       where: { seeker_id: seeker_id },
@@ -33,7 +74,7 @@ export class ChatService {
           },
         },
       },
-      orderBy: { last_message_at: 'desc' },
+      orderBy: { last_message_at: 'asc' },
     });
     return chats;
   }
@@ -87,8 +128,13 @@ export class ChatService {
           },
         },
         Seeker: {
-          select: {
-            seeker_id: true,
+          include: {
+            User: {
+              select: {
+                user_id: true,
+                full_name: true,
+              },
+            },
           },
         },
         Message: {

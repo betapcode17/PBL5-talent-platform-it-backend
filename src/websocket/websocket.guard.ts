@@ -34,15 +34,30 @@ export class WebSocketGuard implements CanActivate {
     _configService: ConfigService,
   ) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const { authorization } = client.handshake.headers;
+      let token: string | undefined;
 
-      if (!authorization) {
-        throw new UnauthorizedException('Authorization header missing');
+      // Support socket.io auth format: client.handshake.auth.token
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (client.handshake.auth?.token) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        token = client.handshake.auth.token;
+      } else {
+        // Fallback to headers authorization format: Bearer <token>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const { authorization } = client.handshake.headers;
+
+        if (!authorization) {
+          throw new UnauthorizedException('Token not provided');
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        token = authorization.split(' ')[1];
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const token: string = authorization.split(' ')[1];
+      if (!token) {
+        throw new UnauthorizedException('Token not provided');
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const payload = jwtService.verify(token);
 
@@ -50,7 +65,8 @@ export class WebSocketGuard implements CanActivate {
       return payload;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      throw new UnauthorizedException();
+      console.error('WebSocket token validation error:', error);
+      throw new UnauthorizedException('Invalid token');
     }
   }
 }

@@ -69,7 +69,7 @@ export class AuthService {
     await this.prisma.token.create({
       data: {
         user_id: user.user_id,
-        token: refreshToken,
+        token: accessToken,
       },
     });
 

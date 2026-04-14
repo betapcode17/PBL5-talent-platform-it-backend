@@ -37,20 +37,28 @@ export class ChatController {
     }
     return this.chatService.CreateChat(dto);
   }
+  @Get('me')
+  async getMyChat(@ReqUser() user: IUserPayload) {
+    if (user.role === 'SEEKER') {
+      return this.chatService.getAllChatOfSeeker(user.sub);
+    } else if (user.role === 'EMPLOYEE') {
+      const companyId = await this.chatService.getCompanyIdByEmployeeId(
+        user.sub,
+      );
+      return this.chatService.getAllChatOfCompany(companyId);
+    }
+    return [];
+  }
 
+  @Get('company/:id')
+  async getCompanyChat(@Param('id', ParseIntPipe) companyId: number) {
+    return this.chatService.getAllChatOfCompany(companyId);
+  }
   @Get(':id')
   async getChatDetail(
     @ReqUser() user: IUserPayload,
     @Param('id', ParseIntPipe) chatId: number,
   ) {
     return this.chatService.getChatDetail(chatId, user.sub, user.role);
-  }
-
-  @Get('me')
-  async getMyChat(@ReqUser() user: IUserPayload) {
-    if (user.role !== 'SEEKER') {
-      return [];
-    }
-    return this.chatService.getAllChatOfSeeker(user.sub);
   }
 }
