@@ -17,49 +17,50 @@ export class SalaryRangeDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  min: number;
+  min!: number;
 
   @ApiProperty({ example: 2000, description: 'Muc luong toi da' })
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  max: number;
+  max!: number;
 }
 
 export class CreateJobDto {
   @ApiProperty({ example: 'Backend Developer' })
   @IsString()
   @IsNotEmpty()
-  title: string;
+  title!: string;
 
   @ApiProperty({ example: 'Phat trien API bang NestJS' })
   @IsString()
   @IsNotEmpty()
-  description: string;
+  description!: string;
 
   @ApiProperty({ example: 1 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  categoryId: number;
+  categoryId!: number;
 
   @ApiProperty({ example: 1 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  jobTypeId: number;
+  jobTypeId!: number;
 
   @ApiProperty({ type: SalaryRangeDto })
   @IsDefined()
   @ValidateNested()
   @Type(() => SalaryRangeDto)
-  salaryRange: SalaryRangeDto;
+  salaryRange!: SalaryRangeDto;
 
   @ApiProperty({ example: 1 })
+  @IsDefined()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  companyId: number;
+  companyId!: number;
 
   @ApiProperty({
     type: [String],
@@ -68,5 +69,5 @@ export class CreateJobDto {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
-  requirements: string[];
+  requirements!: string[];
 }

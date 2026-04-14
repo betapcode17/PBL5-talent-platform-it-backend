@@ -9,18 +9,14 @@ import {
   Post,
   Put,
   Query,
-  Req,
-  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiBody,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
 import { CreateJobDto } from './dto/create-job.dto.js';
 import { GetCompanyJobsQueryDto } from './dto/get-company-jobs.query.dto.js';
 import { SearchJobsQueryDto } from './dto/search-jobs.query.dto.js';
@@ -32,7 +28,7 @@ import { JobsService } from './jobs.service.js';
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
-  @ApiOperation({ summary: 'Tao job post (no auth - temp)' })
+  @ApiOperation({ summary: 'Tao job post (tam thoi khong auth)' })
   @ApiBody({
     type: CreateJobDto,
     examples: {
@@ -43,8 +39,8 @@ export class JobsController {
           description: 'Phat trien API bang NestJS',
           categoryId: 1,
           jobTypeId: 1,
-          salaryRange: { min: 1000, max: 2000 },
           companyId: 1,
+          salaryRange: { min: 1000, max: 2000 },
           requirements: [
             '2+ nam kinh nghiem NestJS',
             'Biet Prisma va PostgreSQL',
@@ -70,9 +66,7 @@ export class JobsController {
     return this.jobsService.searchJobs(query);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Lay jobs cua company (Auth company)' })
+  @ApiOperation({ summary: 'Lay jobs cua company (tam thoi khong auth)' })
   @ApiParam({ name: 'companyId', example: 1, description: 'ID cua company' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
@@ -86,14 +80,12 @@ export class JobsController {
   findByCompany(
     @Param('companyId', ParseIntPipe) companyId: number,
     @Query() query: GetCompanyJobsQueryDto,
-    @Req() req: { user: { sub: number; role: string } },
   ) {
     return this.jobsService.getCompanyJobs(
       companyId,
       query.page,
       query.limit,
       query.active,
-      req.user,
     );
   }
 
@@ -104,7 +96,7 @@ export class JobsController {
     return this.jobsService.getJobDetail(id);
   }
 
-  @ApiOperation({ summary: 'Cap nhat job post theo id (no auth - temp)' })
+  @ApiOperation({ summary: 'Cap nhat job post theo id (tam thoi khong auth)' })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @ApiBody({
     type: UpdateJobDto,
@@ -127,25 +119,28 @@ export class JobsController {
     },
   })
   @Put(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateJobDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateJobDto,
+  ) {
     return this.jobsService.updateJob(id, dto);
   }
 
-  @ApiOperation({ summary: 'Xoa job post theo id (soft delete, no auth - temp)' })
+  @ApiOperation({ summary: 'Xoa job post theo id (soft delete, tam thoi khong auth)' })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.jobsService.deleteJob(id);
   }
 
-  @ApiOperation({ summary: 'Kich hoat job post theo id (no auth - temp)' })
+  @ApiOperation({ summary: 'Kich hoat job post theo id (tam thoi khong auth)' })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @Patch(':id/activate')
   activate(@Param('id', ParseIntPipe) id: number) {
     return this.jobsService.activateJob(id);
   }
 
-  @ApiOperation({ summary: 'Vo hieu hoa job post theo id (no auth - temp)' })
+  @ApiOperation({ summary: 'Vo hieu hoa job post theo id (tam thoi khong auth)' })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @Patch(':id/deactivate')
   deactivate(@Param('id', ParseIntPipe) id: number) {

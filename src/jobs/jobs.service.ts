@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,8 +12,7 @@ import { UpdateJobDto } from './dto/update-job.dto.js';
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createJob( dto: CreateJobDto) {
-  
+  async createJob(dto: CreateJobDto) {
 
     if (dto.salaryRange.min > dto.salaryRange.max) {
       throw new BadRequestException(
@@ -29,22 +27,22 @@ export class JobsService {
       throw new NotFoundException('Company khong ton tai');
     }
     if (!company.is_active) {
-      
+      throw new BadRequestException('Company khong hoat dong');
     }
 
     const category = await this.prisma.category.findUnique({
       where: { category_id: dto.categoryId },
-      select: { category_id: true },
+      select: { category_id: true, is_active: true },
     });
-    if (!category) {
+    if (!category || !category.is_active) {
       throw new NotFoundException('Category khong ton tai');
     }
 
     const jobType = await this.prisma.jobType.findUnique({
       where: { job_type_id: dto.jobTypeId },
-      select: { job_type_id: true },
+      select: { job_type_id: true, is_active: true },
     });
-    if (!jobType) {
+    if (!jobType || !jobType.is_active) {
       throw new NotFoundException('Job type khong ton tai');
     }
 
@@ -327,7 +325,6 @@ export class JobsService {
     page: number = 1,
     limit: number = 10,
     active: boolean | undefined,
-    user: { sub: number; role: string },
   ) {
     if (page < 1) {
       throw new BadRequestException('page phai >= 1');
@@ -345,8 +342,6 @@ export class JobsService {
     if (!company) {
       throw new NotFoundException('Company khong ton tai');
     }
-
-    await this.ensureCompanyPermission(user, companyId);
 
     const where: { company_id: number; is_active?: boolean } = {
       company_id: companyId,
@@ -407,24 +402,6 @@ export class JobsService {
       })),
       total,
     };
-  }
-
-  private async ensureCompanyPermission(
-    user: { sub: number; role: string },
-    companyId: number,
-  ) {
-    if (!user || user.role !== 'EMPLOYEE') {
-      throw new ForbiddenException('Chi tai khoan company moi duoc truy cap');
-    }
-
-    const employee = await this.prisma.employee.findUnique({
-      where: { employee_id: user.sub },
-      select: { company_id: true },
-    });
-
-    if (!employee || employee.company_id !== companyId) {
-      throw new ForbiddenException('Ban chi duoc xem jobs cua cong ty cua minh');
-    }
   }
 
   private parseCurrencyToNumber(input: string): number | null {
@@ -528,17 +505,17 @@ export class JobsService {
 
     const category = await this.prisma.category.findUnique({
       where: { category_id: nextCategoryId },
-      select: { category_id: true },
+      select: { category_id: true, is_active: true },
     });
-    if (!category) {
+    if (!category || !category.is_active) {
       throw new NotFoundException('Category khong ton tai');
     }
 
     const jobType = await this.prisma.jobType.findUnique({
       where: { job_type_id: nextJobTypeId },
-      select: { job_type_id: true },
+      select: { job_type_id: true, is_active: true },
     });
-    if (!jobType) {
+    if (!jobType || !jobType.is_active) {
       throw new NotFoundException('Job type khong ton tai');
     }
 

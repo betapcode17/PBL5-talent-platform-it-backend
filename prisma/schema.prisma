@@ -25,9 +25,13 @@ model Token {
 
 
 model Category {
-  category_id Int       @id @default(autoincrement())
-  name        String
-  JobPost     JobPost[]
+  category_id         Int        @id @default(autoincrement())
+  name                String
+  parent_category_id  Int?
+  is_active           Boolean    @default(true)
+  ParentCategory      Category?  @relation("CategoryHierarchy", fields: [parent_category_id], references: [category_id], onDelete: SetNull)
+  ChildCategories     Category[] @relation("CategoryHierarchy")
+  JobPost             JobPost[]
 }
 
 model Company {
@@ -205,9 +209,11 @@ model JobPostSkill {
 }
 
 model JobType {
-  job_type_id Int       @id @default(autoincrement())
-  job_type    String
-  JobPost     JobPost[]
+  job_type_id  Int       @id @default(autoincrement())
+  job_type     String
+  description  String?
+  is_active    Boolean   @default(true)
+  JobPost      JobPost[]
 }
 
 model Message {
