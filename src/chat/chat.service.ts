@@ -128,8 +128,13 @@ export class ChatService {
           },
         },
         Seeker: {
-          select: {
-            seeker_id: true,
+          include: {
+            User: {
+              select: {
+                user_id: true,
+                full_name: true,
+              },
+            },
           },
         },
         Message: {

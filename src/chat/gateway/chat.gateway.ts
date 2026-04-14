@@ -9,12 +9,18 @@ import { Server } from 'socket.io';
 import { Socket } from 'socket.io';
 import { PrismaService } from '../../prisma.service.js';
 import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 
 interface IMessagePayload {
   chat_id: number;
   content: string;
   sender_type: 'SEEKER' | 'EMPLOYEE';
   sender_id: number;
+}
+
+interface AuthenticatedSocket extends Socket {
+  userId?: number;
+  userRole?: string;
 }
 
 @WebSocketGateway({
@@ -30,24 +36,61 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(ChatGateway.name);
   private connectedUsers = new Map<string, number>(); // socket.id -> user_id
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
+
   //Log ra để biết đã connect hay disconnect, đồng thời lưu trữ user_id của client để sau này có thể kiểm tra quyền truy cập khi họ gửi tin nhắn hoặc tham gia chat
-  handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+  async handleConnection(client: AuthenticatedSocket) {
+    try {
+      const token = (client.handshake?.auth as any)?.token;
+      this.logger.debug(
+        `[CONNECT] Socket ${client.id} - Token present: ${!!token}`,
+      );
+
+      if (!token) {
+        this.logger.warn(
+          `[CONNECT] ❌ No token - disconnecting socket ${client.id}`,
+        );
+        client.disconnect();
+        return;
+      }
+
+      try {
+        const decoded: any = this.jwtService.verify(token);
+        client.userId = decoded.sub;
+        client.userRole = decoded.role;
+        this.connectedUsers.set(client.id, decoded.sub);
+        this.logger.log(
+          `✅ [CONNECT] User ${decoded.sub} (${decoded.role}) - Socket: ${client.id}`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `❌ [CONNECT] Invalid token - ${(err as any).message} - Socket: ${client.id}`,
+        );
+        client.disconnect();
+      }
+    } catch (error) {
+      this.logger.error(`[CONNECT] Unexpected error:`, error);
+      client.disconnect();
+    }
   }
 
-  handleDisconnect(client: Socket) {
-    this.logger.log(`Client disconnected: ${client.id}`);
+  handleDisconnect(client: AuthenticatedSocket) {
+    const userId = client.userId;
+    this.logger.log(`👋 [DISCONNECT] User ${userId} - Socket: ${client.id}`);
     this.connectedUsers.delete(client.id);
   }
 
-  @SubscribeMessage('joinChat')
+  @SubscribeMessage('chat:join')
   async handleJoin(
-    client: Socket,
+    client: AuthenticatedSocket,
     data: { chatId: number; userId: number; userRole: string },
   ) {
     try {
       if (!data.chatId || !data.userId) {
+        this.logger.error(`[JOIN] Missing chatId or userId`);
         client.emit('error', { message: 'chatId và userId là bắt buộc' });
         return;
       }
@@ -58,12 +101,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
 
       if (!chat) {
+        this.logger.error(`[JOIN] Chat not found: ${data.chatId}`);
         client.emit('error', { message: 'Chat không tồn tại' });
         return;
       }
 
       // Verify user has access to this chat
       if (data.userRole === 'SEEKER' && chat.seeker_id !== data.userId) {
+        this.logger.warn(
+          `[JOIN] SEEKER ${data.userId} unauthorized for chat ${data.chatId}`,
+        );
         client.emit('error', {
           message: 'Bạn không có quyền truy cập chat này',
         });
@@ -75,6 +122,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           where: { employee_id: data.userId },
         });
         if (!employee || employee.company_id !== chat.company_id) {
+          this.logger.warn(
+            `[JOIN] EMPLOYEE ${data.userId} unauthorized for chat ${data.chatId}`,
+          );
           client.emit('error', {
             message: 'Bạn không có quyền truy cập chat này',
           });
@@ -84,16 +134,39 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       this.connectedUsers.set(client.id, data.userId);
       void client.join(`chat:${data.chatId}`);
-      this.logger.log(`User ${data.userId} joined chat ${data.chatId}`);
+      this.logger.log(
+        `✅ [JOIN] User ${data.userId} joined chat ${data.chatId} (socket: ${client.id})`,
+      );
     } catch (error) {
       this.logger.error('Error in handleJoin:', error);
       client.emit('error', { message: 'Lỗi trong quá trình tham gia chat' });
     }
   }
 
-  @SubscribeMessage('sendMessage')
-  async handleSend(client: Socket, payload: IMessagePayload) {
+  @SubscribeMessage('chat:leave')
+  async handleLeave(client: AuthenticatedSocket, data: { chatId: number }) {
     try {
+      if (!data.chatId) {
+        return;
+      }
+      void client.leave(`chat:${data.chatId}`);
+      this.logger.log(
+        `👋 [LEAVE] User ${client.userId} left chat ${data.chatId}`,
+      );
+    } catch (error) {
+      this.logger.error('Error in handleLeave:', error);
+    }
+  }
+
+  @SubscribeMessage('message:send')
+  async handleSend(client: AuthenticatedSocket, payload: IMessagePayload) {
+    try {
+      // Verify user is authenticated
+      if (!client.userId) {
+        client.emit('error', { message: 'Not authenticated' });
+        return;
+      }
+
       // Validate payload
       if (
         !payload.chat_id ||
@@ -139,13 +212,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
 
       // Broadcast to all users in this chat
-      this.server.to(`chat:${payload.chat_id}`).emit('newMessage', msg);
       this.logger.log(
-        `Message created: ${msg.message_id} in chat ${payload.chat_id}`,
+        `📤 [BROADCAST] Message ${msg.message_id} to chat:${payload.chat_id}`,
       );
+      this.server.to(`chat:${payload.chat_id}`).emit('message:new', msg);
     } catch (error) {
       this.logger.error('Error in handleSend:', error);
       client.emit('error', { message: 'Lỗi trong quá trình gửi tin nhắn' });
     }
+  }
+
+  /**
+   * Broadcast message created via REST API to WebSocket clients
+   */
+  broadcastMessage(message: any) {
+    this.logger.log(
+      `📤 [BROADCAST] REST API message ${message.message_id} to chat:${message.chat_id}`,
+    );
+    this.server.to(`chat:${message.chat_id}`).emit('message:new', message);
   }
 }

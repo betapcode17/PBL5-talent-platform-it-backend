@@ -18,7 +18,7 @@ export const SocketAuthMiddleware = (
       next();
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      next(error);
+      next(error instanceof Error ? error : new Error(String(error)));
     }
   };
 };

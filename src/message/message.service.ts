@@ -4,10 +4,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
+import { ChatGateway } from '../chat/gateway/chat.gateway.js';
 
 @Injectable()
 export class MessageService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   async sendMessage(
     chatId: number,
@@ -50,6 +54,14 @@ export class MessageService {
         },
       }),
     ]);
+
+    // Broadcast message via WebSocket to all connected clients in this chat room
+    try {
+      this.chatGateway.broadcastMessage(message);
+    } catch (err) {
+      console.error('Failed to broadcast message via WebSocket:', err);
+      // Don't fail the request if WebSocket broadcast fails, message is still saved
+    }
 
     return message;
   }
