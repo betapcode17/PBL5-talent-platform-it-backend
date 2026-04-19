@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { MailerService } from '../mailer/mailer.service.js';
+import type {
+  ApplicationMailPayload,
+  InterviewMailPayload,
+} from '../mailer/mailer.service.js';
 import { EmployeeCompanyRegisterDto } from 'src/auth/dto/employee-company-register.dto.js';
 
 @Injectable()
@@ -14,5 +18,11 @@ export class MailsService {
   }
   sendNewAccountToEmployee(email: string, password: string) {
     void this.mailer.sendNewAccountToEmployeeMail(email, password);
+  }
+  sendInterviewUpdate(payload: InterviewMailPayload) {
+    return this.mailer.sendInterviewUpdateMail(payload);
+  }
+  sendApplicationUpdate(payload: ApplicationMailPayload) {
+    return this.mailer.sendApplicationUpdateMail(payload);
   }
 }

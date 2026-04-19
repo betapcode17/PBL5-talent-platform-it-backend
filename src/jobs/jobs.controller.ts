@@ -9,26 +9,38 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { ReqUser } from '../common/decorators/req-user.decorator.js';
+import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
 import { CreateJobDto } from './dto/create-job.dto.js';
 import { GetCompanyJobsQueryDto } from './dto/get-company-jobs.query.dto.js';
 import { SearchJobsQueryDto } from './dto/search-jobs.query.dto.js';
 import { UpdateJobDto } from './dto/update-job.dto.js';
+import { EmployeeGuard } from './guards/employee.guard.js';
 import { JobsService } from './jobs.service.js';
+
+type RequestUser = {
+  sub: number;
+  role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN';
+  email: string;
+};
 
 @ApiTags('jobs')
 @Controller('jobs')
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
-  @ApiOperation({ summary: 'Tao job post (tam thoi khong auth)' })
+  @ApiOperation({ summary: 'Tao job post (yeu cau token recruiter)' })
+  @ApiBearerAuth()
   @ApiBody({
     type: CreateJobDto,
     examples: {
@@ -49,9 +61,10 @@ export class JobsController {
       },
     },
   })
+  @UseGuards(JwtAuthGuard, EmployeeGuard)
   @Post()
-  create(@Body() dto: CreateJobDto) {
-    return this.jobsService.createJob(dto);
+  create(@ReqUser() user: RequestUser, @Body() dto: CreateJobDto) {
+    return this.jobsService.createJob(user.sub, dto);
   }
 
   @ApiOperation({ summary: 'Tim kiem jobs (Auth optional)' })
@@ -96,8 +109,9 @@ export class JobsController {
     return this.jobsService.getJobDetail(id);
   }
 
-  @ApiOperation({ summary: 'Cap nhat job post theo id (tam thoi khong auth)' })
+  @ApiOperation({ summary: 'Cap nhat job post theo id (yeu cau token recruiter)' })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
+  @ApiBearerAuth()
   @ApiBody({
     type: UpdateJobDto,
     examples: {
@@ -118,32 +132,49 @@ export class JobsController {
       },
     },
   })
+  @UseGuards(JwtAuthGuard, EmployeeGuard)
   @Put(':id')
   update(
+    @ReqUser() user: RequestUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateJobDto,
   ) {
-    return this.jobsService.updateJob(id, dto);
+    return this.jobsService.updateJob(id, user.sub, dto);
   }
 
-  @ApiOperation({ summary: 'Xoa job post theo id (soft delete, tam thoi khong auth)' })
+  @ApiOperation({ summary: 'Xoa job post theo id (soft delete, yeu cau token recruiter)' })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, EmployeeGuard)
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.jobsService.deleteJob(id);
+  remove(
+    @ReqUser() user: RequestUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.jobsService.deleteJob(id, user.sub);
   }
 
-  @ApiOperation({ summary: 'Kich hoat job post theo id (tam thoi khong auth)' })
+  @ApiOperation({ summary: 'Kich hoat job post theo id (yeu cau token recruiter)' })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, EmployeeGuard)
   @Patch(':id/activate')
-  activate(@Param('id', ParseIntPipe) id: number) {
-    return this.jobsService.activateJob(id);
+  activate(
+    @ReqUser() user: RequestUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.jobsService.activateJob(id, user.sub);
   }
 
-  @ApiOperation({ summary: 'Vo hieu hoa job post theo id (tam thoi khong auth)' })
+  @ApiOperation({ summary: 'Vo hieu hoa job post theo id (yeu cau token recruiter)' })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, EmployeeGuard)
   @Patch(':id/deactivate')
-  deactivate(@Param('id', ParseIntPipe) id: number) {
-    return this.jobsService.deactivateJob(id);
+  deactivate(
+    @ReqUser() user: RequestUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.jobsService.deactivateJob(id, user.sub);
   }
 }

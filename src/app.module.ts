@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -12,7 +11,8 @@ import { MessageModule } from './message/message.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { JobTypesModule } from './job-types/job-types.module.js';
 import { BookmarksModule } from './bookmarks/bookmarks.module.js';
-
+import { InterviewsModule } from './interviews/interviews.module.js';
+import { ApplicationsModule } from './applications/applications.module.js';
 
 @Module({
   imports: [
@@ -20,9 +20,6 @@ import { BookmarksModule } from './bookmarks/bookmarks.module.js';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    MongooseModule.forRoot(
-      process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/it-job',
-    ),
     AuthModule,
     UsersModule,
     PrismaModule,
@@ -32,7 +29,8 @@ import { BookmarksModule } from './bookmarks/bookmarks.module.js';
     JobsModule,
     JobTypesModule,
     BookmarksModule,
-
+    ApplicationsModule,
+    InterviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

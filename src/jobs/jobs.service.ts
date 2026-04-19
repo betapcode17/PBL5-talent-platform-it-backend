@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,8 +13,7 @@ import { UpdateJobDto } from './dto/update-job.dto.js';
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createJob(dto: CreateJobDto) {
-
+  async createJob(actorUserId: number, dto: CreateJobDto) {
     if (dto.salaryRange.min > dto.salaryRange.max) {
       throw new BadRequestException(
         'salaryRange.min khong duoc lon hon salaryRange.max',
@@ -46,12 +46,11 @@ export class JobsService {
       throw new NotFoundException('Job type khong ton tai');
     }
 
-    const employee = await this.prisma.employee.findFirst({
-      where: { company_id: dto.companyId },
-      select: { employee_id: true },
-    });
-    if (!employee) {
-      throw new NotFoundException('Company chua co employee de tao job');
+    const employee = await this.getEmployeeProfile(actorUserId);
+    if (employee.company_id !== dto.companyId) {
+      throw new ForbiddenException(
+        'Ban chi duoc tao job cho cong ty cua minh',
+      );
     }
 
     const salaryText = `${dto.salaryRange.min}-${dto.salaryRange.max}`;
@@ -465,7 +464,7 @@ export class JobsService {
     };
   }
 
-  async updateJob(jobId: number, dto: UpdateJobDto) {
+  async updateJob(jobId: number, actorUserId: number, dto: UpdateJobDto) {
     const existingJob = await this.prisma.jobPost.findUnique({
       where: { job_post_id: jobId },
       include: {
@@ -481,6 +480,9 @@ export class JobsService {
     if (!existingJob) {
       throw new NotFoundException('Job khong ton tai');
     }
+
+    const actor = await this.getEmployeeProfile(actorUserId);
+    this.ensureSameCompany(actor.company_id, existingJob.company_id);
 
     const nextCompanyId = dto.companyId ?? existingJob.company_id;
     const nextCategoryId = dto.categoryId ?? existingJob.category_id;
@@ -519,9 +521,9 @@ export class JobsService {
       throw new NotFoundException('Job type khong ton tai');
     }
 
-    if (nextCompanyId !== existingJob.Employee.company_id) {
+    if (nextCompanyId !== actor.company_id) {
       throw new BadRequestException(
-        'companyId phai trung voi cong ty cua employee tao job',
+        'companyId phai trung voi cong ty cua recruiter dang dang nhap',
       );
     }
 
@@ -557,18 +559,22 @@ export class JobsService {
     return this.getJobDetail(jobId);
   }
 
-  async deleteJob(jobId: number) {
+  async deleteJob(jobId: number, actorUserId: number) {
     const job = await this.prisma.jobPost.findUnique({
       where: { job_post_id: jobId },
       select: {
         job_post_id: true,
         is_active: true,
+        company_id: true,
       },
     });
 
     if (!job) {
       throw new NotFoundException('Job khong ton tai');
     }
+
+    const actor = await this.getEmployeeProfile(actorUserId);
+    this.ensureSameCompany(actor.company_id, job.company_id);
 
     if (!job.is_active) {
       return {
@@ -607,17 +613,21 @@ export class JobsService {
     };
   }
 
-  async activateJob(jobId: number) {
+  async activateJob(jobId: number, actorUserId: number) {
     const job = await this.prisma.jobPost.findUnique({
       where: { job_post_id: jobId },
       select: {
         job_post_id: true,
+        company_id: true,
       },
     });
 
     if (!job) {
       throw new NotFoundException('Job khong ton tai');
     }
+
+    const actor = await this.getEmployeeProfile(actorUserId);
+    this.ensureSameCompany(actor.company_id, job.company_id);
 
     await this.prisma.jobPost.update({
       where: { job_post_id: jobId },
@@ -630,17 +640,21 @@ export class JobsService {
     return { message: 'Activated' };
   }
 
-  async deactivateJob(jobId: number) {
+  async deactivateJob(jobId: number, actorUserId: number) {
     const job = await this.prisma.jobPost.findUnique({
       where: { job_post_id: jobId },
       select: {
         job_post_id: true,
+        company_id: true,
       },
     });
 
     if (!job) {
       throw new NotFoundException('Job khong ton tai');
     }
+
+    const actor = await this.getEmployeeProfile(actorUserId);
+    this.ensureSameCompany(actor.company_id, job.company_id);
 
     await this.prisma.jobPost.update({
       where: { job_post_id: jobId },
@@ -651,5 +665,32 @@ export class JobsService {
     });
 
     return { message: 'Deactivated' };
+  }
+
+  private async getEmployeeProfile(userId: number) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { employee_id: userId },
+      select: {
+        employee_id: true,
+        company_id: true,
+        role: true,
+      },
+    });
+
+    if (!employee) {
+      throw new ForbiddenException(
+        'Chi recruiter co ho so employee moi duoc thao tac job',
+      );
+    }
+
+    return employee;
+  }
+
+  private ensureSameCompany(actorCompanyId: number, jobCompanyId: number) {
+    if (actorCompanyId !== jobCompanyId) {
+      throw new ForbiddenException(
+        'Ban khong co quyen thao tac job cua cong ty khac',
+      );
+    }
   }
 }

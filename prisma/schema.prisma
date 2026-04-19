@@ -5,33 +5,26 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  
 }
-
-
-
 
 model Token {
-  token_id   Int      @id @default(autoincrement())
+  token_id   Int       @id @default(autoincrement())
   user_id    Int
-  token      String   @unique
-  type       String   @default("REFRESH") // REFRESH or RESET
+  token      String    @unique
+  created_at DateTime  @default(now())
   expiresAt  DateTime?
-  created_at DateTime @default(now())
-
-  User User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  type       String    @default("REFRESH")
+  User       User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
-
-
 model Category {
-  category_id         Int        @id @default(autoincrement())
-  name                String
-  parent_category_id  Int?
-  is_active           Boolean    @default(true)
-  ParentCategory      Category?  @relation("CategoryHierarchy", fields: [parent_category_id], references: [category_id], onDelete: SetNull)
-  ChildCategories     Category[] @relation("CategoryHierarchy")
-  JobPost             JobPost[]
+  category_id        Int        @id @default(autoincrement())
+  name               String
+  parent_category_id Int?
+  is_active          Boolean    @default(true)
+  ParentCategory     Category?  @relation("CategoryHierarchy", fields: [parent_category_id], references: [category_id])
+  ChildCategories    Category[] @relation("CategoryHierarchy")
+  JobPost            JobPost[]
 }
 
 model Company {
@@ -55,12 +48,11 @@ model Company {
   why_love_working_here String?
   is_active             Boolean             @default(true)
   created_date          DateTime            @default(now())
+  chats                 Chat[]
   CompanyFollow         CompanyFollow[]
   CompanySeekerLike     CompanySeekerLike[]
   Employee              Employee[]
   JobPost               JobPost[]
-
-  chats Chat[]
 }
 
 model CompanyFollow {
@@ -89,32 +81,31 @@ model CompanySeekerLike {
 
 model Chat {
   chat_id         Int       @id @default(autoincrement())
-
   seeker_id       Int
-  company_id      Int
-
   created_date    DateTime  @default(now())
   last_message_at DateTime?
-
-  Seeker          Seeker    @relation(fields: [seeker_id], references: [seeker_id])
+  company_id      Int
   Company         Company   @relation(fields: [company_id], references: [company_id])
+  Seeker          Seeker    @relation(fields: [seeker_id], references: [seeker_id])
   Message         Message[]
 
-  @@unique([seeker_id, company_id]) 
+  @@unique([seeker_id, company_id])
   @@index([company_id])
   @@index([seeker_id])
 }
 
 model Employee {
-  employee_id       Int                 @id
-  company_id        Int
-  role              String
-  joined_date       DateTime?
-  CompanySeekerLike CompanySeekerLike[]
-  Company           Company             @relation(fields: [company_id], references: [company_id])
-  User              User                @relation(fields: [employee_id], references: [user_id])
-  InterviewSchedule InterviewSchedule[]
-  JobPost           JobPost[]
+  employee_id        Int                 @id
+  company_id         Int
+  role               String
+  joined_date        DateTime?
+  CompanySeekerLike  CompanySeekerLike[]
+  Company            Company             @relation(fields: [company_id], references: [company_id])
+  User               User                @relation(fields: [employee_id], references: [user_id])
+  InterviewSchedule  InterviewSchedule[]
+  AssignedInterviews Interview[]         @relation("InterviewAssignedEmployee")
+  CreatedInterviews  Interview[]         @relation("InterviewCreatedByEmployee")
+  JobPost            JobPost[]
 }
 
 model InterviewSchedule {
@@ -135,6 +126,41 @@ model InterviewSchedule {
   Employee             Employee        @relation(fields: [employee_id], references: [employee_id])
   JobPostActivity      JobPostActivity @relation(fields: [job_post_activity_id], references: [application_id])
   Seeker               Seeker          @relation(fields: [seeker_id], references: [seeker_id])
+}
+
+model Interview {
+  interview_id   Int             @id @default(autoincrement())
+  application_id Int
+  seeker_id      Int
+  interviewer_id Int
+  created_by_id  Int
+  type           InterviewType
+  schedule       DateTime
+  end_time       DateTime
+  duration       Int
+  link           String?
+  status         InterviewStatus @default(SCHEDULED)
+  cancel_reason  String?
+  feedback       String?
+  rating         Int?
+  offer          Boolean         @default(false)
+  rescheduled_at DateTime?
+  cancelled_at   DateTime?
+  completed_at   DateTime?
+  created_date   DateTime        @default(now())
+  updated_date   DateTime        @updatedAt
+  Application    JobPostActivity @relation("ApplicationInterviews", fields: [application_id], references: [application_id])
+  Seeker         Seeker          @relation(fields: [seeker_id], references: [seeker_id])
+  Interviewer    Employee        @relation("InterviewAssignedEmployee", fields: [interviewer_id], references: [employee_id])
+  CreatedBy      Employee        @relation("InterviewCreatedByEmployee", fields: [created_by_id], references: [employee_id])
+
+  @@index([application_id])
+  @@index([schedule])
+  @@index([end_time])
+  @@index([interviewer_id])
+  @@index([seeker_id])
+  @@index([status])
+  @@map("interviews")
 }
 
 model JobBookmark {
@@ -186,13 +212,21 @@ model JobPostActivity {
   seeker_id         Int
   job_post_id       Int
   apply_date        DateTime            @default(now())
+  cover_letter      String?
+  cv_url            String?
   current_stage     String?
-  status            ApplicationStatus
+  status            ApplicationStatus   @default(PENDING)
   rejection_reason  String?
   last_updated      DateTime
   InterviewSchedule InterviewSchedule[]
+  Interviews        Interview[]         @relation("ApplicationInterviews")
   JobPost           JobPost             @relation(fields: [job_post_id], references: [job_post_id])
   Seeker            Seeker              @relation(fields: [seeker_id], references: [seeker_id])
+
+  @@unique([seeker_id, job_post_id])
+  @@index([job_post_id])
+  @@index([seeker_id])
+  @@index([status])
 }
 
 model JobPostSkill {
@@ -209,29 +243,25 @@ model JobPostSkill {
 }
 
 model JobType {
-  job_type_id  Int       @id @default(autoincrement())
-  job_type     String
-  description  String?
-  is_active    Boolean   @default(true)
-  JobPost      JobPost[]
+  job_type_id Int       @id @default(autoincrement())
+  job_type    String
+  description String?
+  is_active   Boolean   @default(true)
+  JobPost     JobPost[]
 }
 
 model Message {
-  message_id  Int      @id @default(autoincrement())
-
+  message_id  Int        @id @default(autoincrement())
+  sender_id   Int
+  content     String
+  sent_at     DateTime   @default(now())
+  is_read     Boolean    @default(false)
   chat_id     Int
   sender_type SenderType
-  sender_id   Int     
-
-  content     String
-  sent_at     DateTime @default(now())
-  is_read     Boolean  @default(false)
-
-  Chat        Chat     @relation(fields: [chat_id], references: [chat_id])
+  Chat        Chat       @relation(fields: [chat_id], references: [chat_id])
 
   @@index([chat_id])
 }
-
 
 model Seeker {
   seeker_id            Int                   @id
@@ -241,10 +271,11 @@ model Seeker {
   portfolio_url        String?
   created_date         DateTime              @default(now())
   updated_date         DateTime
+  Chat                 Chat[]
   CompanyFollow        CompanyFollow[]
   CompanySeekerLike    CompanySeekerLike[]
-  Chat         Chat[]
   InterviewSchedule    InterviewSchedule[]
+  Interviews           Interview[]
   JobBookmark          JobBookmark[]
   JobPostActivity      JobPostActivity[]
   User                 User                  @relation(fields: [seeker_id], references: [user_id])
@@ -354,17 +385,16 @@ model User {
   user_id           Int       @id @default(autoincrement())
   email             String    @unique
   password          String
-  full_name         String?
   phone             String?
   gender            String?
   user_image        String?
   role              UserRole
   is_active         Boolean   @default(true)
   registration_date DateTime  @default(now())
+  full_name         String?
   Employee          Employee?
   Seeker            Seeker?
-
-  tokens Token[]
+  tokens            Token[]
 }
 
 enum ApplicationStatus {
@@ -379,6 +409,12 @@ enum InterviewStatus {
   SCHEDULED
   COMPLETED
   CANCELLED
+}
+
+enum InterviewType {
+  VIDEO
+  PHONE
+  ONSITE
 }
 
 enum SkillType {
