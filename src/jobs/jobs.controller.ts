@@ -59,11 +59,26 @@ export class JobsController {
   @ApiQuery({ name: 'category', required: false, example: 'web' })
   @ApiQuery({ name: 'location', required: false, example: 'HN' })
   @ApiQuery({ name: 'salaryMin', required: false, example: '10M' })
+  @ApiQuery({ name: 'salaryMax', required: false, example: '50M' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
   @Get('search')
   search(@Query() query: SearchJobsQueryDto) {
     return this.jobsService.searchJobs(query);
+  }
+
+  @ApiOperation({ summary: 'Lay toan bo jobs (Auth optional)' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({
+    name: 'active',
+    required: false,
+    example: true,
+    description: 'Filter theo trang thai active',
+  })
+  @Get()
+  findAll(@Query() query: GetCompanyJobsQueryDto) {
+    return this.jobsService.getAllJobs(query.page, query.limit, query.active);
   }
 
   @ApiOperation({ summary: 'Lay jobs cua company (tam thoi khong auth)' })
@@ -119,14 +134,13 @@ export class JobsController {
     },
   })
   @Put(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateJobDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateJobDto) {
     return this.jobsService.updateJob(id, dto);
   }
 
-  @ApiOperation({ summary: 'Xoa job post theo id (soft delete, tam thoi khong auth)' })
+  @ApiOperation({
+    summary: 'Xoa job post theo id (soft delete, tam thoi khong auth)',
+  })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
@@ -140,7 +154,9 @@ export class JobsController {
     return this.jobsService.activateJob(id);
   }
 
-  @ApiOperation({ summary: 'Vo hieu hoa job post theo id (tam thoi khong auth)' })
+  @ApiOperation({
+    summary: 'Vo hieu hoa job post theo id (tam thoi khong auth)',
+  })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @Patch(':id/deactivate')
   deactivate(@Param('id', ParseIntPipe) id: number) {

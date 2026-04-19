@@ -13,7 +13,6 @@ export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createJob(dto: CreateJobDto) {
-
     if (dto.salaryRange.min > dto.salaryRange.max) {
       throw new BadRequestException(
         'salaryRange.min khong duoc lon hon salaryRange.max',
@@ -165,10 +164,17 @@ export class JobsService {
     const categoryKeyword = query.category?.trim();
     const locationKeyword = query.location?.trim();
     const salaryMinRaw = query.salaryMin?.trim();
+    const salaryMaxRaw = query.salaryMax?.trim();
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
-    if (!keyword && !categoryKeyword && !locationKeyword && !salaryMinRaw) {
+    if (
+      !keyword &&
+      !categoryKeyword &&
+      !locationKeyword &&
+      !salaryMinRaw &&
+      !salaryMaxRaw
+    ) {
       throw new BadRequestException('Thieu query tim kiem');
     }
 
@@ -176,8 +182,24 @@ export class JobsService {
       ? this.parseCurrencyToNumber(salaryMinRaw)
       : null;
 
+    const salaryMaxValue = salaryMaxRaw
+      ? this.parseCurrencyToNumber(salaryMaxRaw)
+      : null;
+
     if (salaryMinRaw && salaryMinValue === null) {
       throw new BadRequestException('salaryMin khong hop le');
+    }
+
+    if (salaryMaxRaw && salaryMaxValue === null) {
+      throw new BadRequestException('salaryMax khong hop le');
+    }
+
+    if (
+      salaryMinValue !== null &&
+      salaryMaxValue !== null &&
+      salaryMinValue > salaryMaxValue
+    ) {
+      throw new BadRequestException('salaryMin khong duoc lon hon salaryMax');
     }
 
     const where: Record<string, unknown> = {
@@ -251,17 +273,32 @@ export class JobsService {
     });
 
     const salaryFiltered =
-      salaryMinValue === null
+      salaryMinValue === null && salaryMaxValue === null
         ? mapped
         : mapped.filter((job) => {
-            const comparableSalary =
-              job.salaryRange.max ?? job.salaryRange.min ?? null;
+            // Filter by salary range
+            // If salaryMin provided: show jobs where min salary >= salaryMin
+            // If salaryMax provided: show jobs where max salary <= salaryMax
+            const jobMinSalary = job.salaryRange.min ?? null;
+            const jobMaxSalary = job.salaryRange.max ?? null;
 
-            if (comparableSalary === null) {
+            if (jobMinSalary === null || jobMaxSalary === null) {
               return false;
             }
 
-            return comparableSalary >= salaryMinValue;
+            let matchesSalaryMin = true;
+            if (salaryMinValue !== null) {
+              // Job's minimum salary must be at least salaryMin
+              matchesSalaryMin = jobMinSalary >= salaryMinValue;
+            }
+
+            let matchesSalaryMax = true;
+            if (salaryMaxValue !== null) {
+              // Job's maximum salary must be at most salaryMax
+              matchesSalaryMax = jobMaxSalary <= salaryMaxValue;
+            }
+
+            return matchesSalaryMin && matchesSalaryMax;
           });
 
     const categories = Array.from(
@@ -651,5 +688,84 @@ export class JobsService {
     });
 
     return { message: 'Deactivated' };
+  }
+
+  async getAllJobs(
+    page: number = 1,
+    limit: number = 20,
+    active: boolean | undefined,
+  ) {
+    if (page < 1) {
+      throw new BadRequestException('page phai >= 1');
+    }
+
+    if (limit < 1 || limit > 100) {
+      throw new BadRequestException('limit phai tu 1 den 100');
+    }
+
+    const where: { is_active?: boolean } = {};
+
+    if (typeof active === 'boolean') {
+      where.is_active = active;
+    }
+
+    const [jobs, total] = await Promise.all([
+      this.prisma.jobPost.findMany({
+        where,
+        orderBy: { created_date: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          job_post_id: true,
+          job_title: true,
+          name: true,
+          job_description: true,
+          salary: true,
+          is_active: true,
+          created_date: true,
+          updated_date: true,
+          Company: {
+            select: {
+              company_id: true,
+              company_name: true,
+              city: true,
+            },
+          },
+          Category: {
+            select: {
+              category_id: true,
+              name: true,
+            },
+          },
+          JobType: {
+            select: {
+              job_type_id: true,
+              job_type: true,
+            },
+          },
+        },
+      }),
+      this.prisma.jobPost.count({ where }),
+    ]);
+
+    return {
+      jobs: jobs.map((job) => ({
+        id: job.job_post_id,
+        title: job.job_title || job.name,
+        description: job.job_description,
+        salary: job.salary,
+        salaryRange: this.extractSalaryRange(job.salary),
+        isActive: job.is_active,
+        createdDate: job.created_date,
+        updatedDate: job.updated_date,
+        company: job.Company,
+        category: job.Category,
+        jobType: job.JobType,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }
