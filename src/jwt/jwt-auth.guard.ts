@@ -14,8 +14,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-  async canActivate(context: any): Promise<boolean> {
+  canActivate(context: any): boolean {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const request = context.switchToHttp().getRequest();
 
