@@ -21,7 +21,7 @@ import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiQuery } from '@nestjs/swagger';
 
 @Controller('companies')
 export class CompanyController {
@@ -91,6 +91,7 @@ export class CompanyController {
   }
 
   @ApiOperation({ summary: 'Vô hiệu hóa company' })
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Patch(':id/deactivate')
   async deactivate(@Param('id') id: string, @Req() req: any) {
@@ -99,6 +100,7 @@ export class CompanyController {
   }
 
   @ApiOperation({ summary: 'Xóa company (admin)' })
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async remove(@Param('id') id: string, @Req() req: any) {

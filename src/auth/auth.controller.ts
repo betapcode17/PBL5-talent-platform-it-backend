@@ -1,4 +1,11 @@
-import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { RegisterDto, UserRole } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -7,6 +14,9 @@ import { GoogleLoginDto } from './dto/google-login.dto.js';
 import { OAuthCodeDto } from './dto/oauth-code.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { EmployeeCompanyRegisterDto } from './dto/employee-company-register.dto.js';
+import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
+import { ReqUser } from '../common/decorators/req-user.decorator.js';
 
 @Controller('auth')
 export class AuthController {
@@ -28,32 +38,6 @@ export class AuthController {
           is_active: true,
         } as RegisterDto,
       },
-      employee: {
-        summary: 'Nhân viên tuyển dụng (EMPLOYEE)',
-        value: {
-          email: 'hr@company.com',
-          password: '1232@asdS',
-          full_name: 'Michael Smith',
-          phone: '0987654321',
-          gender: 'Male',
-          user_image: null,
-          role: UserRole.EMPLOYEE,
-          is_active: true,
-        } as RegisterDto,
-      },
-      admin: {
-        summary: 'Quản trị viên (ADMIN)',
-        value: {
-          email: 'admin@system.com',
-          password: 'Admin@123',
-          full_name: 'System Admin',
-          phone: null,
-          gender: null,
-          user_image: null,
-          role: UserRole.ADMIN,
-          is_active: true,
-        } as RegisterDto,
-      },
     },
   })
   @Post('register')
@@ -70,6 +54,13 @@ export class AuthController {
           email: 'johndoe@example.com',
           password: '1232@asdS',
         } as LoginDto,
+      },
+      employee: {
+        summary: 'nhà tuyển dụng',
+        value: {
+          email: 'hr@techcorp.com',
+          password: 'password123',
+        },
       },
       admin: {
         summary: 'Admin',
@@ -199,6 +190,28 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
 
+  @ApiOperation({ summary: 'Đăng ký nhân viên công ty (chỉ gửi mail)' })
+  @ApiBody({
+    type: EmployeeCompanyRegisterDto,
+    examples: {
+      example: {
+        value: {
+          full_name: 'Nguyen Van A',
+          role: 'HR',
+          email: 'hr.company@example.com',
+          phone: '0901234567',
+          company_name: 'ABC Tech',
+          company_address: 'Da Nang',
+          company_website_url: 'https://abctech.vn',
+        } as EmployeeCompanyRegisterDto,
+      },
+    },
+  })
+  @Post('employee-company-register')
+  employeeCompanyRegister(@Body() dto: EmployeeCompanyRegisterDto) {
+    return this.authService.employeeCompanyRegister(dto);
+  }
+
   private async exchangeGithubCode(code: string): Promise<string> {
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
@@ -281,5 +294,12 @@ export class AuthController {
     }
 
     return payload.access_token;
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getMe(@ReqUser() user) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+    return this.authService.getMe(user.sub);
   }
 }
