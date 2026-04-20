@@ -15,6 +15,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+  async canActivate(context: any): Promise<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const request = context.switchToHttp().getRequest();
 
     const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
@@ -23,6 +25,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       throw new UnauthorizedException('Token not found');
     }
 
+    // Bang Token hien tai chi luu refresh token va reset token.
+    // Access token khong duoc luu DB, vi vay guard chi can verify JWT.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     return super.canActivate(context) as boolean;
   }
 }

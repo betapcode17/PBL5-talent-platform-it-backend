@@ -15,9 +15,8 @@ import { CreateChatDto } from './dto/create-chat.dto.js';
 import { ReqUser } from '../common/decorators/req-user.decorator.js';
 
 interface IUserPayload {
-  user_id: number;
+  sub: number;
   role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN';
-  seeker_id?: number;
 }
 
 @ApiTags('chat')
@@ -30,10 +29,7 @@ export class ChatController {
   @Post()
   async create(@ReqUser() user: IUserPayload, @Body() dto: CreateChatDto) {
     if (user.role === 'SEEKER') {
-      if (!user.seeker_id) {
-        throw new BadRequestException('Seeker ID không tồn tại');
-      }
-      dto.seeker_id = user.seeker_id;
+      dto.seeker_id = user.sub;
     } else if (user.role !== 'EMPLOYEE') {
       throw new BadRequestException(
         'Chỉ seeker hoặc employee mới có thể tạo chat',
@@ -41,23 +37,28 @@ export class ChatController {
     }
     return this.chatService.CreateChat(dto);
   }
+  @Get('me')
+  async getMyChat(@ReqUser() user: IUserPayload) {
+    if (user.role === 'SEEKER') {
+      return this.chatService.getAllChatOfSeeker(user.sub);
+    } else if (user.role === 'EMPLOYEE') {
+      const companyId = await this.chatService.getCompanyIdByEmployeeId(
+        user.sub,
+      );
+      return this.chatService.getAllChatOfCompany(companyId);
+    }
+    return [];
+  }
 
+  @Get('company/:id')
+  async getCompanyChat(@Param('id', ParseIntPipe) companyId: number) {
+    return this.chatService.getAllChatOfCompany(companyId);
+  }
   @Get(':id')
   async getChatDetail(
     @ReqUser() user: IUserPayload,
     @Param('id', ParseIntPipe) chatId: number,
   ) {
-    return this.chatService.getChatDetail(chatId, user.user_id, user.role);
-  }
-
-  @Get('me')
-  async getMyChat(@ReqUser() user: IUserPayload) {
-    if (user.role !== 'SEEKER') {
-      return [];
-    }
-    if (!user.seeker_id) {
-      throw new BadRequestException('Seeker ID không tồn tại');
-    }
-    return this.chatService.getAllChatOfSeeker(user.seeker_id);
+    return this.chatService.getChatDetail(chatId, user.sub, user.role);
   }
 }

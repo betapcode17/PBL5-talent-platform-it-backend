@@ -16,9 +16,8 @@ import { SendMessageDto } from './dto/send-message.dto.js';
 import { EditMessageDto } from './dto/edit-message.dto.js';
 
 interface IUserPayload {
-  user_id: number;
+  sub: number;
   role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN';
-  seeker_id?: number;
 }
 
 @ApiTags('message')
@@ -31,8 +30,7 @@ export class MessageController {
   @Post()
   async send(@Req() req: { user: IUserPayload }, @Body() dto: SendMessageDto) {
     const senderType = req.user.role === 'SEEKER' ? 'SEEKER' : 'EMPLOYEE';
-    const senderId =
-      req.user.role === 'SEEKER' ? req.user.seeker_id : req.user.user_id;
+    const senderId = req.user.sub;
 
     if (!senderId) {
       throw new BadRequestException('Không thể xác định ID người gửi');
@@ -48,7 +46,6 @@ export class MessageController {
 
   @Get()
   async getMessages(
-    @Req() req: { user: IUserPayload },
     @Query('chatId', ParseIntPipe) chatId: number,
     @Query('limit', ParseIntPipe) limit: number = 50,
     @Query('offset', ParseIntPipe) offset: number = 0,
@@ -57,7 +54,7 @@ export class MessageController {
   }
 
   @Post('edit')
-  async editMessage(dto: EditMessageDto) {
+  async editMessage(@Body() dto: EditMessageDto) {
     return this.messageService.editMessage(dto.messageId, dto.newContent);
   }
 }

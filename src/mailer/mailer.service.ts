@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import Handlebars from 'handlebars';
 import fs from 'fs/promises';
 import path from 'path';
+import { EmployeeCompanyRegisterDto } from 'src/auth/dto/employee-company-register.dto.js';
 
 @Injectable()
 export class MailerService {
@@ -93,5 +94,69 @@ export class MailerService {
       subject: 'Reset Password',
       html,
     });
+  }
+  async sendRegisterEmployeeMail(payload: EmployeeCompanyRegisterDto) {
+    const to = process.env.MAILER_USER;
+    if (!to) {
+      this.logger.error('Thiếu email nhận thông báo hệ thống');
+      return;
+    }
+    const subject = 'Yeu cau dang ky employee moi';
+    const html =
+      '<h2>Thong tin dang ky employee moi</h2>' +
+      '<p><b>Ho ten:</b> ' +
+      payload.full_name +
+      '</p>' +
+      '<p><b>Vai tro:</b> ' +
+      payload.role +
+      '</p>' +
+      '<p><b>Email:</b> ' +
+      payload.email +
+      '</p>' +
+      '<p><b>So dien thoai:</b> ' +
+      payload.phone +
+      '</p>' +
+      '<p><b>Cong ty:</b> ' +
+      payload.company_name +
+      '</p>' +
+      '<p><b>Dia chi cong ty:</b> ' +
+      payload.company_address +
+      '</p>' +
+      '<p><b>Website:</b> ' +
+      (payload.company_website_url || 'Khong co');
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    await this.transporter.sendMail({
+      to,
+      subject,
+      html,
+    });
+    this.logger.log('Da gui mail thong bao dang ky employee cho he thong');
+  }
+  async sendNewAccountToEmployeeMail(email: string, password: string) {
+    const to = email;
+    if (!to) {
+      this.logger.error('Thiếu email nhận tài khoản employee');
+      return;
+    }
+    const subject = 'Tai khoan employee moi';
+    const html =
+      '<h2>Tai khoan employee cua ban da duoc tao</h2>' +
+      '<p><b>Email:</b> ' +
+      email +
+      '</p>' +
+      '<p><b>Mat khau tam:</b> ' +
+      password +
+      '</p>' +
+      '<p>Vui long dang nhap va doi mat khau ngay sau lan dau tien.</p>';
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    await this.transporter.sendMail({
+      to,
+      subject,
+      html,
+    });
+
+    this.logger.log(`Da gui tai khoan employee moi den ${email}`);
   }
 }
