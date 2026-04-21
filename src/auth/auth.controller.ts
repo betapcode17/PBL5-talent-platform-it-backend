@@ -113,6 +113,23 @@ export class AuthController {
     return this.authService.googleOneTapLogin(dto.credential);
   }
 
+  @ApiOperation({ summary: 'Dang nhap bang Google callback' })
+  @Post('google/callback')
+  @ApiBody({
+    type: OAuthCodeDto,
+    examples: {
+      example: {
+        value: {
+          code: 'GOOGLE_AUTHORIZATION_CODE',
+        },
+      },
+    },
+  })
+  async googleCallback(@Body() dto: OAuthCodeDto) {
+    const idToken = await this.exchangeGoogleCode(dto.code);
+    return this.authService.googleOneTapLogin(idToken);
+  }
+
   @ApiOperation({ summary: 'Đăng nhập bằng Github' })
   @Post('github')
   @ApiBody({
@@ -210,6 +227,54 @@ export class AuthController {
   @Post('employee-company-register')
   employeeCompanyRegister(@Body() dto: EmployeeCompanyRegisterDto) {
     return this.authService.employeeCompanyRegister(dto);
+  }
+
+  private async exchangeGoogleCode(code: string): Promise<string> {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      throw new BadRequestException(
+        'Thieu cau hinh GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET hoac GOOGLE_REDIRECT_URI',
+      );
+    }
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+    });
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException('Khong the exchange Google code');
+    }
+
+    const payload = (await response.json()) as {
+      id_token?: string;
+      error?: string;
+      error_description?: string;
+    };
+
+    if (!payload.id_token) {
+      throw new BadRequestException(
+        payload.error_description ||
+          payload.error ||
+          'Google code khong hop le',
+      );
+    }
+
+    return payload.id_token;
   }
 
   private async exchangeGithubCode(code: string): Promise<string> {
