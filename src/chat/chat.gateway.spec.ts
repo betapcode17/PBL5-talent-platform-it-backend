@@ -1,16 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma.service.js';
 import { ChatGateway } from './gateway/chat.gateway.js';
-import { ChatService } from './chat.service.js';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ChatGateway, ChatService],
+      providers: [
+        ChatGateway,
+        { provide: PrismaService, useValue: {} },
+        { provide: JwtService, useValue: {} },
+      ],
     }).compile();
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument
     gateway = module.get<ChatGateway>(ChatGateway);
   });
 

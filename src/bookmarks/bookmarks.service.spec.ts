@@ -1,14 +1,30 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma.service.js';
 import { BookmarksService } from './bookmarks.service.js';
+
+type PrismaMock = {
+  user: { findUnique: jest.Mock };
+  seeker: { findUnique: jest.Mock; create: jest.Mock };
+  jobPost: { findUnique: jest.Mock };
+  jobBookmark: {
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    delete: jest.Mock;
+  };
+};
 
 describe('BookmarksService', () => {
   let service: BookmarksService;
-  let prisma: any;
+  let prisma: PrismaMock;
 
   beforeEach(() => {
     prisma = {
+      user: {
+        findUnique: jest.fn(),
+      },
       seeker: {
         findUnique: jest.fn(),
+        create: jest.fn(),
       },
       jobPost: {
         findUnique: jest.fn(),
@@ -20,8 +36,13 @@ describe('BookmarksService', () => {
       },
     };
 
+    prisma.user.findUnique.mockResolvedValue({
+      user_id: 1,
+      role: 'SEEKER',
+      is_active: true,
+    });
     prisma.seeker.findUnique.mockResolvedValue({ seeker_id: 1 });
-    service = new BookmarksService(prisma);
+    service = new BookmarksService(prisma as unknown as PrismaService);
   });
 
   it('throws when bookmark already exists', async () => {
