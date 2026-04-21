@@ -72,11 +72,26 @@ export class JobsController {
   @ApiQuery({ name: 'category', required: false, example: 'web' })
   @ApiQuery({ name: 'location', required: false, example: 'HN' })
   @ApiQuery({ name: 'salaryMin', required: false, example: '10M' })
+  @ApiQuery({ name: 'salaryMax', required: false, example: '50M' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
   @Get('search')
   search(@Query() query: SearchJobsQueryDto) {
     return this.jobsService.searchJobs(query);
+  }
+
+  @ApiOperation({ summary: 'Lay toan bo jobs (Auth optional)' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({
+    name: 'active',
+    required: false,
+    example: true,
+    description: 'Filter theo trang thai active',
+  })
+  @Get()
+  findAll(@Query() query: GetCompanyJobsQueryDto) {
+    return this.jobsService.getAllJobs(query.page, query.limit, query.active);
   }
 
   @ApiOperation({ summary: 'Lay jobs cua company (tam thoi khong auth)' })

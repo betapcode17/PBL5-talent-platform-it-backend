@@ -8,7 +8,10 @@ export class SearchJobsQueryDto {
   @IsOptional()
   q?: string;
 
-  @ApiPropertyOptional({ example: 'web', description: 'Loc theo category name' })
+  @ApiPropertyOptional({
+    example: 'web',
+    description: 'Loc theo category name',
+  })
   @IsString()
   @IsOptional()
   category?: string;
@@ -26,8 +29,17 @@ export class SearchJobsQueryDto {
   @IsOptional()
   salaryMin?: string;
 
+  @ApiPropertyOptional({
+    example: '50M',
+    description: 'Luong toi da (ho tro: 50000, 50k, 50m, 5b)',
+  })
+  @IsString()
+  @IsOptional()
+  salaryMax?: string;
+
   @ApiPropertyOptional({ example: 1, default: 1 })
   @Type(() => Number)
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   @Transform(({ value }) => (value === '' ? undefined : value))
   @IsInt()
   @Min(1)
@@ -36,6 +48,7 @@ export class SearchJobsQueryDto {
 
   @ApiPropertyOptional({ example: 20, default: 20 })
   @Type(() => Number)
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   @Transform(({ value }) => (value === '' ? undefined : value))
   @IsInt()
   @Min(1)

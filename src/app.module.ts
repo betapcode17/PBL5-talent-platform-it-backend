@@ -8,6 +8,8 @@ import { PrismaModule } from '../prisma/prisma.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
 import { ChatModule } from './chat/chat.module.js';
 import { MessageModule } from './message/message.module.js';
+import { CompanyModule } from './company/company.module.js';
+import { FollowModule } from './follow/follow.module.js';
 import { WebSocketModule } from './websocket/websocket.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { JobTypesModule } from './job-types/job-types.module.js';
@@ -29,6 +31,8 @@ import { AdminModule } from './admin/admin.module.js';
     EmployeesModule,
     ChatModule,
     MessageModule,
+    CompanyModule,
+    FollowModule,
     WebSocketModule,
     JobsModule,
     JobTypesModule,

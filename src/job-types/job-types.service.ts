@@ -154,8 +154,10 @@ export class JobTypesService {
       },
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const categoriesTree = this.buildCategoryTree(categories, parentId ?? null);
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     return { categories: categoriesTree };
   }
 
@@ -178,7 +180,9 @@ export class JobTypesService {
 
     if (dto.parentId !== undefined) {
       if (dto.parentId === id) {
-        throw new BadRequestException('Category khong the la parent cua chinh no');
+        throw new BadRequestException(
+          'Category khong the la parent cua chinh no',
+        );
       }
 
       if (dto.parentId !== null) {
@@ -300,6 +304,7 @@ export class JobTypesService {
     categories: CategoryRecord[],
     parentId: number | null,
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return categories
       .filter((category) => category.parent_category_id === parentId)
       .map((category) => ({
@@ -307,6 +312,7 @@ export class JobTypesService {
         name: category.name,
         parentId: category.parent_category_id,
         isActive: category.is_active,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         children: this.buildCategoryTree(categories, category.category_id),
       }));
   }
@@ -329,7 +335,9 @@ export class JobTypesService {
 
     while (cursor !== null) {
       if (cursor === categoryId) {
-        throw new BadRequestException('Khong the tao vong lap category hierarchy');
+        throw new BadRequestException(
+          'Khong the tao vong lap category hierarchy',
+        );
       }
 
       const parent = categories.find((item) => item.category_id === cursor);

@@ -55,6 +55,7 @@ export class AuthService {
       sub: user.user_id,
       email: user.email,
       role: user.role,
+      seeker_id: user.user_id,
     };
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: process.env.ACCESS_TOKEN_SECRET,
@@ -149,6 +150,7 @@ export class AuthService {
         sub: payload.sub,
         email: payload.email,
         role: payload.role,
+        seeker_id: payload.seeker_id,
       },
       {
         secret: process.env.ACCESS_TOKEN_SECRET,
@@ -320,6 +322,7 @@ export class AuthService {
       sub: user.user_id,
       email: user.email,
       role: user.role,
+      seeker_id: user.user_id,
     };
 
     const accessToken = await this.jwtService.signAsync(jwtPayload, {

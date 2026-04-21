@@ -28,7 +28,11 @@ const KNOWN_TECH_KEYWORDS = [
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
+<<<<<<< HEAD
   async createJob(actorUserId: number, dto: CreateJobDto) {
+=======
+  async createJob(dto: CreateJobDto) {
+>>>>>>> 15b2cf4c373d1edfb91ba482503ce26d079169e4
     if (dto.salaryRange.min > dto.salaryRange.max) {
       throw new BadRequestException(
         'salaryRange.min khong duoc lon hon salaryRange.max',
@@ -177,15 +181,45 @@ export class JobsService {
     const categoryKeyword = query.category?.trim();
     const locationKeyword = query.location?.trim();
     const salaryMinRaw = query.salaryMin?.trim();
+    const salaryMaxRaw = query.salaryMax?.trim();
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
+<<<<<<< HEAD
+=======
+    if (
+      !keyword &&
+      !categoryKeyword &&
+      !locationKeyword &&
+      !salaryMinRaw &&
+      !salaryMaxRaw
+    ) {
+      throw new BadRequestException('Thieu query tim kiem');
+    }
+
+>>>>>>> 15b2cf4c373d1edfb91ba482503ce26d079169e4
     const salaryMinValue = salaryMinRaw
       ? this.parseCurrencyToNumber(salaryMinRaw)
       : null;
 
+    const salaryMaxValue = salaryMaxRaw
+      ? this.parseCurrencyToNumber(salaryMaxRaw)
+      : null;
+
     if (salaryMinRaw && salaryMinValue === null) {
       throw new BadRequestException('salaryMin khong hop le');
+    }
+
+    if (salaryMaxRaw && salaryMaxValue === null) {
+      throw new BadRequestException('salaryMax khong hop le');
+    }
+
+    if (
+      salaryMinValue !== null &&
+      salaryMaxValue !== null &&
+      salaryMinValue > salaryMaxValue
+    ) {
+      throw new BadRequestException('salaryMin khong duoc lon hon salaryMax');
     }
 
     const where: Record<string, unknown> = {
@@ -317,17 +351,32 @@ export class JobsService {
     });
 
     const salaryFiltered =
-      salaryMinValue === null
+      salaryMinValue === null && salaryMaxValue === null
         ? mapped
         : mapped.filter((job) => {
-            const comparableSalary =
-              job.salaryRange.max ?? job.salaryRange.min ?? null;
+            // Filter by salary range
+            // If salaryMin provided: show jobs where min salary >= salaryMin
+            // If salaryMax provided: show jobs where max salary <= salaryMax
+            const jobMinSalary = job.salaryRange.min ?? null;
+            const jobMaxSalary = job.salaryRange.max ?? null;
 
-            if (comparableSalary === null) {
+            if (jobMinSalary === null || jobMaxSalary === null) {
               return false;
             }
 
-            return comparableSalary >= salaryMinValue;
+            let matchesSalaryMin = true;
+            if (salaryMinValue !== null) {
+              // Job's minimum salary must be at least salaryMin
+              matchesSalaryMin = jobMinSalary >= salaryMinValue;
+            }
+
+            let matchesSalaryMax = true;
+            if (salaryMaxValue !== null) {
+              // Job's maximum salary must be at most salaryMax
+              matchesSalaryMax = jobMaxSalary <= salaryMaxValue;
+            }
+
+            return matchesSalaryMin && matchesSalaryMax;
           });
 
     const categories = Array.from(

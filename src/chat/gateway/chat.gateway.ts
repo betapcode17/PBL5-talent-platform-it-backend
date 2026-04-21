@@ -178,6 +178,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('message:send')
   async handleSend(client: AuthenticatedSocket, payload: IMessagePayload) {
     try {
+      // Check if user is authenticated
+      if (!client.userId || !client.userRole) {
+        this.logger.warn(
+          `⚠️ [SEND] Unauthenticated socket attempt - Socket: ${client.id}`,
+        );
+        client.emit('error', { message: 'Vui lòng đăng nhập lại' });
+        return;
+      }
       // Verify user is authenticated
       if (!client.userId) {
         client.emit('error', { message: 'Not authenticated' });
