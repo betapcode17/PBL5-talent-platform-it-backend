@@ -28,11 +28,7 @@ const KNOWN_TECH_KEYWORDS = [
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-<<<<<<< HEAD
   async createJob(actorUserId: number, dto: CreateJobDto) {
-=======
-  async createJob(dto: CreateJobDto) {
->>>>>>> 15b2cf4c373d1edfb91ba482503ce26d079169e4
     if (dto.salaryRange.min > dto.salaryRange.max) {
       throw new BadRequestException(
         'salaryRange.min khong duoc lon hon salaryRange.max',
@@ -185,19 +181,7 @@ export class JobsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
-<<<<<<< HEAD
-=======
-    if (
-      !keyword &&
-      !categoryKeyword &&
-      !locationKeyword &&
-      !salaryMinRaw &&
-      !salaryMaxRaw
-    ) {
-      throw new BadRequestException('Thieu query tim kiem');
-    }
 
->>>>>>> 15b2cf4c373d1edfb91ba482503ce26d079169e4
     const salaryMinValue = salaryMinRaw
       ? this.parseCurrencyToNumber(salaryMinRaw)
       : null;
@@ -892,5 +876,84 @@ export class JobsService {
         'Ban khong co quyen thao tac job cua cong ty khac',
       );
     }
+    return true;
+  }
+  async getAllJobs(
+    page: number = 1,
+    limit: number = 20,
+    active: boolean | undefined,
+  ) {
+    if (page < 1) {
+      throw new BadRequestException('page phai >= 1');
+    }
+
+    if (limit < 1 || limit > 100) {
+      throw new BadRequestException('limit phai tu 1 den 100');
+    }
+
+    const where: { is_active?: boolean } = {};
+
+    if (typeof active === 'boolean') {
+      where.is_active = active;
+    }
+
+    const [jobs, total] = await Promise.all([
+      this.prisma.jobPost.findMany({
+        where,
+        orderBy: { created_date: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          job_post_id: true,
+          job_title: true,
+          name: true,
+          job_description: true,
+          salary: true,
+          is_active: true,
+          created_date: true,
+          updated_date: true,
+          Company: {
+            select: {
+              company_id: true,
+              company_name: true,
+              city: true,
+            },
+          },
+          Category: {
+            select: {
+              category_id: true,
+              name: true,
+            },
+          },
+          JobType: {
+            select: {
+              job_type_id: true,
+              job_type: true,
+            },
+          },
+        },
+      }),
+      this.prisma.jobPost.count({ where }),
+    ]);
+
+    return {
+      jobs: jobs.map((job) => ({
+        id: job.job_post_id,
+        title: job.job_title || job.name,
+        description: job.job_description,
+        salary: job.salary,
+        salaryRange: this.extractSalaryRange(job.salary),
+        isActive: job.is_active,
+        createdDate: job.created_date,
+        updatedDate: job.updated_date,
+        company: job.Company,
+        category: job.Category,
+        jobType: job.JobType,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }
