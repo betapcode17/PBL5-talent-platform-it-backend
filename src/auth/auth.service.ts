@@ -70,7 +70,7 @@ export class AuthService {
     await this.prisma.token.create({
       data: {
         user_id: user.user_id,
-        token: accessToken,
+        token: refreshToken,
       },
     });
 
@@ -125,6 +125,10 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token khong hop le');
+    }
+
     const storedToken = await this.prisma.token.findUnique({
       where: { token: refreshToken },
       include: { User: true },
@@ -159,6 +163,12 @@ export class AuthService {
   }
 
   async logout(refreshToken: string) {
+    if (!refreshToken) {
+      return {
+        message: 'Dang xuat thanh cong',
+      };
+    }
+
     await this.prisma.token.deleteMany({
       where: { token: refreshToken },
     });
@@ -436,6 +446,25 @@ export class AuthService {
         phone: true,
         user_image: true,
         registration_date: true,
+        Employee: {
+          select: {
+            employee_id: true,
+            role: true,
+            joined_date: true,
+            Company: {
+              select: {
+                company_id: true,
+                company_name: true,
+                company_email: true,
+                company_image: true,
+                city: true,
+                company_website_url: true,
+                company_industry: true,
+                company_size: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -453,6 +482,14 @@ export class AuthService {
       phone: user.phone,
       user_image: user.user_image,
       registration_date: user.registration_date,
+      employee: user.Employee
+        ? {
+            employee_id: user.Employee.employee_id,
+            role: user.Employee.role,
+            joined_date: user.Employee.joined_date,
+            company: user.Employee.Company,
+          }
+        : null,
     };
   }
 

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,11 +9,30 @@ import { CreateJobDto } from './dto/create-job.dto.js';
 import { SearchJobsQueryDto } from './dto/search-jobs.query.dto.js';
 import { UpdateJobDto } from './dto/update-job.dto.js';
 
+const KNOWN_TECH_KEYWORDS = [
+  'React',
+  'TypeScript',
+  'JavaScript',
+  'Node.js',
+  'NestJS',
+  'Python',
+  'Java',
+  'Go',
+  'PostgreSQL',
+  'Docker',
+  'AWS',
+  'Figma',
+];
+
 @Injectable()
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
+<<<<<<< HEAD
+  async createJob(actorUserId: number, dto: CreateJobDto) {
+=======
   async createJob(dto: CreateJobDto) {
+>>>>>>> 15b2cf4c373d1edfb91ba482503ce26d079169e4
     if (dto.salaryRange.min > dto.salaryRange.max) {
       throw new BadRequestException(
         'salaryRange.min khong duoc lon hon salaryRange.max',
@@ -45,12 +65,9 @@ export class JobsService {
       throw new NotFoundException('Job type khong ton tai');
     }
 
-    const employee = await this.prisma.employee.findFirst({
-      where: { company_id: dto.companyId },
-      select: { employee_id: true },
-    });
-    if (!employee) {
-      throw new NotFoundException('Company chua co employee de tao job');
+    const employee = await this.getEmployeeProfile(actorUserId);
+    if (employee.company_id !== dto.companyId) {
+      throw new ForbiddenException('Ban chi duoc tao job cho cong ty cua minh');
     }
 
     const salaryText = `${dto.salaryRange.min}-${dto.salaryRange.max}`;
@@ -168,6 +185,8 @@ export class JobsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
+<<<<<<< HEAD
+=======
     if (
       !keyword &&
       !categoryKeyword &&
@@ -178,6 +197,7 @@ export class JobsService {
       throw new BadRequestException('Thieu query tim kiem');
     }
 
+>>>>>>> 15b2cf4c373d1edfb91ba482503ce26d079169e4
     const salaryMinValue = salaryMinRaw
       ? this.parseCurrencyToNumber(salaryMinRaw)
       : null;
@@ -213,6 +233,38 @@ export class JobsService {
         { job_description: { contains: keyword, mode: 'insensitive' } },
         { candidate_requirements: { contains: keyword, mode: 'insensitive' } },
         { work_location: { contains: keyword, mode: 'insensitive' } },
+        {
+          Company: {
+            is: {
+              company_name: { contains: keyword, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          Category: {
+            is: {
+              name: { contains: keyword, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          JobType: {
+            is: {
+              job_type: { contains: keyword, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          JobPostSkill: {
+            some: {
+              Skill: {
+                is: {
+                  skill_name: { contains: keyword, mode: 'insensitive' },
+                },
+              },
+            },
+          },
+        },
       ];
     }
 
@@ -224,7 +276,10 @@ export class JobsService {
         name: true,
         job_title: true,
         job_description: true,
+        candidate_requirements: true,
         work_location: true,
+        work_type: true,
+        level: true,
         salary: true,
         is_active: true,
         created_date: true,
@@ -247,6 +302,17 @@ export class JobsService {
             job_type: true,
           },
         },
+        JobPostSkill: {
+          select: {
+            Skill: {
+              select: {
+                skill_id: true,
+                skill_name: true,
+                skill_type: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -254,14 +320,26 @@ export class JobsService {
       const salaryRange = this.extractSalaryRange(job.salary);
       const categoryName = job.Category?.name ?? '';
       const location = job.work_location || job.Company?.city || '';
+      const skills = this.getJobSkills({
+        title: job.job_title || job.name,
+        description: job.job_description,
+        requirements: job.candidate_requirements,
+        categoryName,
+        jobTypeName: job.JobType?.job_type,
+        skillNames: job.JobPostSkill.map((item) => item.Skill.skill_name),
+      });
 
       return {
         id: job.job_post_id,
         title: job.job_title || job.name,
         description: job.job_description,
+        requirements: job.candidate_requirements,
         salary: job.salary,
         salaryRange,
         location,
+        workType: job.work_type,
+        level: job.level,
+        skills,
         isActive: job.is_active,
         createdDate: job.created_date,
         company: job.Company,
@@ -317,6 +395,38 @@ export class JobsService {
       ),
     ).sort((a, b) => a.localeCompare(b));
 
+    const jobTypeCounts = salaryFiltered.reduce((counts, job) => {
+      const value = this.normalizeEmploymentType(job.jobType?.job_type);
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>());
+
+    const jobTypes = ['Full-time', 'Contract', 'Part-time'].map((value) => ({
+      label: value,
+      value,
+      count: jobTypeCounts.get(value) ?? 0,
+    }));
+
+    const programmingLanguages = Array.from(
+      salaryFiltered
+        .reduce((counts, job) => {
+          const uniqueSkills = new Set(job.skills);
+
+          uniqueSkills.forEach((skill) => {
+            counts.set(skill, (counts.get(skill) ?? 0) + 1);
+          });
+
+          return counts;
+        }, new Map<string, number>())
+        .entries(),
+    )
+      .map(([value, count]) => ({
+        label: value,
+        value,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
     const categoryTerm = categoryKeyword?.toLowerCase();
     const locationTerm = locationKeyword?.toLowerCase();
 
@@ -340,9 +450,13 @@ export class JobsService {
         id: job.id,
         title: job.title,
         description: job.description,
+        requirements: job.requirements,
         salary: job.salary,
         salaryRange: job.salaryRange,
         location: job.location,
+        workType: job.workType,
+        level: job.level,
+        skills: job.skills,
         isActive: job.isActive,
         createdDate: job.createdDate,
         company: job.company,
@@ -353,6 +467,8 @@ export class JobsService {
       filters: {
         categories,
         locations,
+        jobTypes,
+        programmingLanguages,
       },
     };
   }
@@ -502,7 +618,53 @@ export class JobsService {
     };
   }
 
-  async updateJob(jobId: number, dto: UpdateJobDto) {
+  private normalizeEmploymentType(jobType?: string | null) {
+    const normalized = jobType?.toLowerCase().replace(/[\s_-]+/g, '') ?? '';
+
+    if (normalized.includes('contract')) {
+      return 'Contract';
+    }
+
+    if (normalized.includes('part')) {
+      return 'Part-time';
+    }
+
+    return 'Full-time';
+  }
+
+  private getJobSkills(job: {
+    title: string;
+    description: string | null;
+    requirements: string | null;
+    categoryName: string;
+    jobTypeName?: string | null;
+    skillNames: string[];
+  }) {
+    const databaseSkills = Array.from(
+      new Set(job.skillNames.map((skill) => skill.trim()).filter(Boolean)),
+    );
+
+    if (databaseSkills.length > 0) {
+      return databaseSkills;
+    }
+
+    const source = [
+      job.title,
+      job.description,
+      job.requirements,
+      job.categoryName,
+      job.jobTypeName,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return KNOWN_TECH_KEYWORDS.filter((skill) =>
+      source.includes(skill.toLowerCase()),
+    );
+  }
+
+  async updateJob(jobId: number, actorUserId: number, dto: UpdateJobDto) {
     const existingJob = await this.prisma.jobPost.findUnique({
       where: { job_post_id: jobId },
       include: {
@@ -518,6 +680,9 @@ export class JobsService {
     if (!existingJob) {
       throw new NotFoundException('Job khong ton tai');
     }
+
+    const actor = await this.getEmployeeProfile(actorUserId);
+    this.ensureSameCompany(actor.company_id, existingJob.company_id);
 
     const nextCompanyId = dto.companyId ?? existingJob.company_id;
     const nextCategoryId = dto.categoryId ?? existingJob.category_id;
@@ -556,9 +721,9 @@ export class JobsService {
       throw new NotFoundException('Job type khong ton tai');
     }
 
-    if (nextCompanyId !== existingJob.Employee.company_id) {
+    if (nextCompanyId !== actor.company_id) {
       throw new BadRequestException(
-        'companyId phai trung voi cong ty cua employee tao job',
+        'companyId phai trung voi cong ty cua recruiter dang dang nhap',
       );
     }
 
@@ -594,18 +759,22 @@ export class JobsService {
     return this.getJobDetail(jobId);
   }
 
-  async deleteJob(jobId: number) {
+  async deleteJob(jobId: number, actorUserId: number) {
     const job = await this.prisma.jobPost.findUnique({
       where: { job_post_id: jobId },
       select: {
         job_post_id: true,
         is_active: true,
+        company_id: true,
       },
     });
 
     if (!job) {
       throw new NotFoundException('Job khong ton tai');
     }
+
+    const actor = await this.getEmployeeProfile(actorUserId);
+    this.ensureSameCompany(actor.company_id, job.company_id);
 
     if (!job.is_active) {
       return {
@@ -644,17 +813,21 @@ export class JobsService {
     };
   }
 
-  async activateJob(jobId: number) {
+  async activateJob(jobId: number, actorUserId: number) {
     const job = await this.prisma.jobPost.findUnique({
       where: { job_post_id: jobId },
       select: {
         job_post_id: true,
+        company_id: true,
       },
     });
 
     if (!job) {
       throw new NotFoundException('Job khong ton tai');
     }
+
+    const actor = await this.getEmployeeProfile(actorUserId);
+    this.ensureSameCompany(actor.company_id, job.company_id);
 
     await this.prisma.jobPost.update({
       where: { job_post_id: jobId },
@@ -667,17 +840,21 @@ export class JobsService {
     return { message: 'Activated' };
   }
 
-  async deactivateJob(jobId: number) {
+  async deactivateJob(jobId: number, actorUserId: number) {
     const job = await this.prisma.jobPost.findUnique({
       where: { job_post_id: jobId },
       select: {
         job_post_id: true,
+        company_id: true,
       },
     });
 
     if (!job) {
       throw new NotFoundException('Job khong ton tai');
     }
+
+    const actor = await this.getEmployeeProfile(actorUserId);
+    this.ensureSameCompany(actor.company_id, job.company_id);
 
     await this.prisma.jobPost.update({
       where: { job_post_id: jobId },
@@ -690,82 +867,30 @@ export class JobsService {
     return { message: 'Deactivated' };
   }
 
-  async getAllJobs(
-    page: number = 1,
-    limit: number = 20,
-    active: boolean | undefined,
-  ) {
-    if (page < 1) {
-      throw new BadRequestException('page phai >= 1');
+  private async getEmployeeProfile(userId: number) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { employee_id: userId },
+      select: {
+        employee_id: true,
+        company_id: true,
+        role: true,
+      },
+    });
+
+    if (!employee) {
+      throw new ForbiddenException(
+        'Chi recruiter co ho so employee moi duoc thao tac job',
+      );
     }
 
-    if (limit < 1 || limit > 100) {
-      throw new BadRequestException('limit phai tu 1 den 100');
+    return employee;
+  }
+
+  private ensureSameCompany(actorCompanyId: number, jobCompanyId: number) {
+    if (actorCompanyId !== jobCompanyId) {
+      throw new ForbiddenException(
+        'Ban khong co quyen thao tac job cua cong ty khac',
+      );
     }
-
-    const where: { is_active?: boolean } = {};
-
-    if (typeof active === 'boolean') {
-      where.is_active = active;
-    }
-
-    const [jobs, total] = await Promise.all([
-      this.prisma.jobPost.findMany({
-        where,
-        orderBy: { created_date: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-        select: {
-          job_post_id: true,
-          job_title: true,
-          name: true,
-          job_description: true,
-          salary: true,
-          is_active: true,
-          created_date: true,
-          updated_date: true,
-          Company: {
-            select: {
-              company_id: true,
-              company_name: true,
-              city: true,
-            },
-          },
-          Category: {
-            select: {
-              category_id: true,
-              name: true,
-            },
-          },
-          JobType: {
-            select: {
-              job_type_id: true,
-              job_type: true,
-            },
-          },
-        },
-      }),
-      this.prisma.jobPost.count({ where }),
-    ]);
-
-    return {
-      jobs: jobs.map((job) => ({
-        id: job.job_post_id,
-        title: job.job_title || job.name,
-        description: job.job_description,
-        salary: job.salary,
-        salaryRange: this.extractSalaryRange(job.salary),
-        isActive: job.is_active,
-        createdDate: job.created_date,
-        updatedDate: job.updated_date,
-        company: job.Company,
-        category: job.Category,
-        jobType: job.JobType,
-      })),
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
   }
 }

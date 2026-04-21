@@ -15,6 +15,10 @@ import { JobsModule } from './jobs/jobs.module.js';
 import { JobTypesModule } from './job-types/job-types.module.js';
 import { BookmarksModule } from './bookmarks/bookmarks.module.js';
 
+import { InterviewsModule } from './interviews/interviews.module.js';
+import { ApplicationsModule } from './applications/applications.module.js';
+import { AdminModule } from './admin/admin.module.js';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -33,6 +37,9 @@ import { BookmarksModule } from './bookmarks/bookmarks.module.js';
     JobsModule,
     JobTypesModule,
     BookmarksModule,
+    ApplicationsModule,
+    InterviewsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
