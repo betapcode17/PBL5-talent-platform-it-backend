@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "module": "nodenext",
-    "types": ["node", "multer"],
+    "types": ["node", "multer", "jest"],
     "moduleResolution": "nodenext",
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
@@ -15,10 +15,10 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "ignoreDeprecations": "5.0",
     "paths": {
       "src/*": ["src/*"]
     },
-    "types": ["jest"],
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,

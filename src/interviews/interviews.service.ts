@@ -166,7 +166,9 @@ export class InterviewsService {
       return interview;
     });
 
-    const interviewDetail = await this.getInterviewOrThrow(created.interview_id);
+    const interviewDetail = await this.getInterviewOrThrow(
+      created.interview_id,
+    );
     await this.notifyInterviewCreated(interviewDetail);
 
     return { interviewId: created.interview_id };
@@ -414,7 +416,9 @@ export class InterviewsService {
     }
 
     if (application.JobPost.company_id !== companyId) {
-      throw new ForbiddenException('Ban khong co quyen thao tac application nay');
+      throw new ForbiddenException(
+        'Ban khong co quyen thao tac application nay',
+      );
     }
 
     if (application.status !== ApplicationStatus.PASSED) {
@@ -558,10 +562,7 @@ export class InterviewsService {
       if (query.role === MyInterviewRole.INTERVIEWER) {
         return {
           ...baseWhere,
-          OR: [
-            { interviewer_id: userId },
-            { created_by_id: userId },
-          ],
+          OR: [{ interviewer_id: userId }, { created_by_id: userId }],
         };
       }
 
@@ -589,7 +590,9 @@ export class InterviewsService {
 
   private async ensureEmployeeProfile(userId: number, userRole: UserRole) {
     if (userRole !== 'EMPLOYEE') {
-      throw new ForbiddenException('Chi employee moi duoc thuc hien thao tac nay');
+      throw new ForbiddenException(
+        'Chi employee moi duoc thuc hien thao tac nay',
+      );
     }
 
     const employee = await this.prisma.employee.findUnique({
@@ -705,7 +708,9 @@ export class InterviewsService {
     await Promise.all(emailTasks);
   }
 
-  private async safeSendMail(payload: Parameters<MailsService['sendInterviewUpdate']>[0]) {
+  private async safeSendMail(
+    payload: Parameters<MailsService['sendInterviewUpdate']>[0],
+  ) {
     try {
       await this.mailsService.sendInterviewUpdate(payload);
     } catch (error) {
@@ -851,7 +856,9 @@ export class InterviewsService {
         throw new Error('invalid protocol');
       }
     } catch {
-      throw new BadRequestException('link phai la URL hop le cho interview video');
+      throw new BadRequestException(
+        'link phai la URL hop le cho interview video',
+      );
     }
   }
 

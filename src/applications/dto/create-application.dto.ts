@@ -13,8 +13,10 @@ export class CreateApplicationDto {
     example: 'Toi rat quan tam vi tri nay va co kinh nghiem NestJS/Prisma.',
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  @Transform(({ value }: { value: unknown }): string | undefined =>
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : (value as string | undefined),
   )
   @IsString()
   coverLetter?: string;

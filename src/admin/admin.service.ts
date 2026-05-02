@@ -39,7 +39,6 @@ export class AdminService {
       totalUsers,
       totalJobs,
       totalApps,
-      ratingAggregate,
       usersForCharts,
       jobsForCharts,
       appsForCharts,
@@ -47,10 +46,6 @@ export class AdminService {
       this.prisma.user.count(),
       this.prisma.jobPost.count(),
       this.prisma.jobPostActivity.count(),
-      this.prisma.interview.aggregate({
-        _avg: { rating: true },
-        where: { rating: { not: null } },
-      }),
       this.prisma.user.findMany({
         where: { registration_date: { gte: chartStart } },
         select: { registration_date: true },
@@ -73,7 +68,7 @@ export class AdminService {
       totalUsers,
       totalJobs,
       totalApps,
-      avgRating: this.roundRating(ratingAggregate._avg.rating),
+      avgRating: 0,
       charts: {
         daily: this.buildChartRows(dailyBuckets, userDates, jobDates, appDates),
         weekly: this.buildChartRows(
