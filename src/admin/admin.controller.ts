@@ -43,6 +43,34 @@ export class AdminController {
     return this.adminService.getUsers(query);
   }
 
+  @ApiOperation({ summary: 'Lay danh sach users dang active (ADMIN)' })
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    enum: ['ADMIN', 'SEEKER', 'EMPLOYEE'],
+  })
+  @ApiQuery({ name: 'search', required: false, example: 'nguyen@example.com' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @Get('users/active')
+  activeUsers(@Query() query: GetAdminUsersQueryDto) {
+    return this.adminService.activeUsers(query);
+  }
+
+  @ApiOperation({ summary: 'Lay danh sach users da bi ban (ADMIN)' })
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    enum: ['ADMIN', 'SEEKER', 'EMPLOYEE'],
+  })
+  @ApiQuery({ name: 'search', required: false, example: 'nguyen@example.com' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @Get('users/ban')
+  banUsers(@Query() query: GetAdminUsersQueryDto) {
+    return this.adminService.banUsers(query);
+  }
+
   @ApiOperation({ summary: 'Lay danh sach companies cho admin (ADMIN)' })
   @ApiQuery({ name: 'industry', required: false, example: 'Software' })
   @ApiQuery({ name: 'active', required: false, example: true })
@@ -53,6 +81,27 @@ export class AdminController {
   getCompanies(@Query() query: GetAdminCompaniesQueryDto) {
     return this.adminService.getCompanies(query);
   }
+
+  @ApiOperation({ summary: 'Lay danh sach companies dang active (ADMIN)' })
+  @ApiQuery({ name: 'industry', required: false, example: 'Software' })
+  @ApiQuery({ name: 'search', required: false, example: 'Tech' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @Get('companies/active')
+  activeCompanies(@Query() query: GetAdminCompaniesQueryDto) {
+    return this.adminService.activeCompanies(query);
+  }
+
+  @ApiOperation({ summary: 'Lay danh sach companies da bi ban (ADMIN)' })
+  @ApiQuery({ name: 'industry', required: false, example: 'Software' })
+  @ApiQuery({ name: 'search', required: false, example: 'Tech' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @Get('companies/ban')
+  banCompanies(@Query() query: GetAdminCompaniesQueryDto) {
+    return this.adminService.banCompanies(query);
+  }
+
   @ApiOperation({ summary: 'Lấy danh sách jobs cho admin (ADMIN)' })
   @ApiQuery({ name: 'search', required: false, example: 'Developer' })
   @ApiQuery({ name: 'industry', required: false, example: 'Software' })
@@ -81,5 +130,63 @@ export class AdminController {
   @Get('jobs')
   getJobs(@Query() query: GetAdminJobsQueryDto) {
     return this.adminService.getJobs(query);
+  }
+
+  @ApiOperation({ summary: 'Lay danh sach jobs dang active (ADMIN)' })
+  @ApiQuery({ name: 'search', required: false, example: 'Developer' })
+  @ApiQuery({ name: 'industry', required: false, example: 'Software' })
+  @ApiQuery({ name: 'level', required: false, example: 'Senior' })
+  @ApiQuery({ name: 'categoryId', required: false, example: 1 })
+  @ApiQuery({ name: 'jobTypeId', required: false, example: 1 })
+  @ApiQuery({ name: 'minSalary', required: false, example: '20000000' })
+  @ApiQuery({ name: 'maxSalary', required: false, example: '100000000' })
+  @ApiQuery({ name: 'deadlineFrom', required: false, example: '2024-05-01' })
+  @ApiQuery({ name: 'deadlineTo', required: false, example: '2024-12-31' })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    example: 'createdDate',
+    enum: ['createdDate', 'deadline', 'salary', 'numberOfHires', 'updatedDate'],
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    example: 'desc',
+    enum: ['asc', 'desc'],
+  })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @Get('jobs/active')
+  activeJobs(@Query() query: GetAdminJobsQueryDto) {
+    return this.adminService.activeJobs(query);
+  }
+
+  @ApiOperation({ summary: 'Lay danh sach jobs da bi ban (ADMIN)' })
+  @ApiQuery({ name: 'search', required: false, example: 'Developer' })
+  @ApiQuery({ name: 'industry', required: false, example: 'Software' })
+  @ApiQuery({ name: 'level', required: false, example: 'Senior' })
+  @ApiQuery({ name: 'categoryId', required: false, example: 1 })
+  @ApiQuery({ name: 'jobTypeId', required: false, example: 1 })
+  @ApiQuery({ name: 'minSalary', required: false, example: '20000000' })
+  @ApiQuery({ name: 'maxSalary', required: false, example: '100000000' })
+  @ApiQuery({ name: 'deadlineFrom', required: false, example: '2024-05-01' })
+  @ApiQuery({ name: 'deadlineTo', required: false, example: '2024-12-31' })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    example: 'createdDate',
+    enum: ['createdDate', 'deadline', 'salary', 'numberOfHires', 'updatedDate'],
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    example: 'desc',
+    enum: ['asc', 'desc'],
+  })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @Get('jobs/ban')
+  banJobs(@Query() query: GetAdminJobsQueryDto) {
+    return this.adminService.banJobs(query);
   }
 }

@@ -90,7 +90,7 @@ export class AdminService {
     };
   }
 
-  async getUsers(query: GetAdminUsersQueryDto) {
+  async getUsers(query: Partial<GetAdminUsersQueryDto> = {}) {
     const where: Prisma.UserWhereInput = {};
     const search = query.search?.trim();
     const page = query.page ?? 1;
@@ -106,6 +106,11 @@ export class AdminService {
         { full_name: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    if (typeof query.active === 'boolean') {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      where.is_active = query.active;
     }
 
     const [users, total] = await Promise.all([
@@ -188,7 +193,15 @@ export class AdminService {
     };
   }
 
-  async getCompanies(query: GetAdminCompaniesQueryDto) {
+  async activeUsers(query: Partial<GetAdminUsersQueryDto> = {}) {
+    return this.getUsers({ ...query, active: true });
+  }
+
+  async banUsers(query: Partial<GetAdminUsersQueryDto> = {}) {
+    return this.getUsers({ ...query, active: false });
+  }
+
+  async getCompanies(query: Partial<GetAdminCompaniesQueryDto> = {}) {
     const where: Prisma.CompanyWhereInput = {};
     const industry = query.industry?.trim();
     const search = query.search?.trim();
@@ -275,6 +288,14 @@ export class AdminService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async activeCompanies(query: Partial<GetAdminCompaniesQueryDto> = {}) {
+    return this.getCompanies({ ...query, active: true });
+  }
+
+  async banCompanies(query: Partial<GetAdminCompaniesQueryDto> = {}) {
+    return this.getCompanies({ ...query, active: false });
   }
 
   private buildDailyBuckets(days: number): TimeBucket[] {
@@ -399,7 +420,7 @@ export class AdminService {
 
     return Math.round(value * 100) / 100;
   }
-  async getJobs(query: GetAdminJobsQueryDto) {
+  async getJobs(query: Partial<GetAdminJobsQueryDto> = {}) {
     const where: Prisma.JobPostWhereInput = {};
     const search = query.search?.trim();
     const page = query.page ?? 1;
@@ -594,5 +615,13 @@ export class AdminService {
       sortBy,
       sortOrder,
     };
+  }
+
+  async activeJobs(query: Partial<GetAdminJobsQueryDto> = {}) {
+    return this.getJobs({ ...query, active: true });
+  }
+
+  async banJobs(query: Partial<GetAdminJobsQueryDto> = {}) {
+    return this.getJobs({ ...query, active: false });
   }
 }
