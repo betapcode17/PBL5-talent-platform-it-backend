@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma.service.js';
 import { GetAdminCompaniesQueryDto } from './dto/get-admin-companies.query.dto.js';
 import { GetAdminStatisticsQueryDto } from './dto/get-admin-statistics.query.dto.js';
 import { GetAdminUsersQueryDto } from './dto/get-admin-users.query.dto.js';
+import { GetAdminJobsQueryDto } from './dto/get-admin-jobs.query.dto.js';
 
 type TimeBucket = {
   label: string;
@@ -51,7 +52,9 @@ export class AdminService {
         select: { registration_date: true },
       }),
       this.prisma.jobPost.findMany({
-        where: { created_date: { gte: chartStart } },
+        where: {
+          created_date: { gte: chartStart },
+        },
         select: { created_date: true },
       }),
       this.prisma.jobPostActivity.findMany({
@@ -87,7 +90,7 @@ export class AdminService {
     };
   }
 
-  async getUsers(query: GetAdminUsersQueryDto) {
+  async getUsers(query: Partial<GetAdminUsersQueryDto> = {}) {
     const where: Prisma.UserWhereInput = {};
     const search = query.search?.trim();
     const page = query.page ?? 1;
@@ -103,6 +106,11 @@ export class AdminService {
         { full_name: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    if (typeof query.active === 'boolean') {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      where.is_active = query.active;
     }
 
     const [users, total] = await Promise.all([
@@ -185,7 +193,15 @@ export class AdminService {
     };
   }
 
-  async getCompanies(query: GetAdminCompaniesQueryDto) {
+  async activeUsers(query: Partial<GetAdminUsersQueryDto> = {}) {
+    return this.getUsers({ ...query, active: true });
+  }
+
+  async banUsers(query: Partial<GetAdminUsersQueryDto> = {}) {
+    return this.getUsers({ ...query, active: false });
+  }
+
+  async getCompanies(query: Partial<GetAdminCompaniesQueryDto> = {}) {
     const where: Prisma.CompanyWhereInput = {};
     const industry = query.industry?.trim();
     const search = query.search?.trim();
@@ -272,6 +288,14 @@ export class AdminService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async activeCompanies(query: Partial<GetAdminCompaniesQueryDto> = {}) {
+    return this.getCompanies({ ...query, active: true });
+  }
+
+  async banCompanies(query: Partial<GetAdminCompaniesQueryDto> = {}) {
+    return this.getCompanies({ ...query, active: false });
   }
 
   private buildDailyBuckets(days: number): TimeBucket[] {
@@ -395,5 +419,319 @@ export class AdminService {
     }
 
     return Math.round(value * 100) / 100;
+  }
+  async getJobs(query: Partial<GetAdminJobsQueryDto> = {}) {
+    const where: Prisma.JobPostWhereInput = {};
+    const search = query.search?.trim();
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const sortBy = query.sortBy ?? 'createdDate';
+    const sortOrder = query.sortOrder ?? 'desc';
+
+    // Build filters
+    if (search) {
+      where.OR = [
+        { job_title: { contains: search, mode: 'insensitive' } },
+        {
+          Company: { company_name: { contains: search, mode: 'insensitive' } },
+        },
+        { name: { contains: search, mode: 'insensitive' } },
+        { job_description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (query.industry) {
+      where.Company = {
+        company_industry: { contains: query.industry, mode: 'insensitive' },
+      };
+    }
+
+    if (query.level) {
+      where.level = { contains: query.level, mode: 'insensitive' };
+    }
+
+    if (query.categoryId) {
+      where.category_id = query.categoryId;
+    }
+
+    if (query.jobTypeId) {
+      where.job_type_id = query.jobTypeId;
+    }
+
+    if (typeof query.active === 'boolean') {
+      where.is_active = query.active;
+    }
+
+    // Salary filter - search in salary string format like "20,000,000 - 100,000,000"
+    if (query.minSalary) {
+      where.salary = {
+        contains: query.minSalary,
+        mode: 'insensitive',
+      };
+    }
+
+    // Deadline filters
+    if (query.deadlineFrom || query.deadlineTo) {
+      const deadlineFilter: Prisma.DateTimeFilter = {};
+
+      if (query.deadlineFrom) {
+        deadlineFilter.gte = new Date(query.deadlineFrom);
+      }
+
+      if (query.deadlineTo) {
+        deadlineFilter.lte = new Date(query.deadlineTo);
+      }
+
+      where.deadline = deadlineFilter;
+    }
+
+    // Build orderBy based on sortBy and sortOrder
+    const orderByMap: Record<string, Prisma.JobPostOrderByWithRelationInput> = {
+      createdDate: { created_date: sortOrder },
+      deadline: { deadline: sortOrder },
+      salary: { salary: sortOrder },
+      numberOfHires: { number_of_hires: sortOrder },
+      updatedDate: { updated_date: sortOrder },
+    };
+
+    const orderBy = orderByMap[sortBy] || { created_date: 'desc' };
+
+    const jobSelect = {
+      job_post_id: true,
+      job_title: true,
+      name: true,
+      job_description: true,
+      salary: true,
+      level: true,
+      experience: true,
+      education: true,
+      number_of_hires: true,
+      deadline: true,
+      work_location: true,
+      work_type: true,
+      is_active: true,
+      created_date: true,
+      updated_date: true,
+      Company: {
+        select: {
+          company_id: true,
+          company_name: true,
+          company_email: true,
+          company_image: true,
+          company_industry: true,
+          city: true,
+        },
+      },
+      Category: {
+        select: {
+          category_id: true,
+          name: true,
+        },
+      },
+      JobType: {
+        select: {
+          job_type_id: true,
+          job_type: true,
+        },
+      },
+      Employee: {
+        select: {
+          employee_id: true,
+          User: {
+            select: {
+              full_name: true,
+              email: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          JobPostActivity: true,
+        },
+      },
+    } as const;
+
+    type JobPayload = Prisma.JobPostGetPayload<{ select: typeof jobSelect }>;
+
+    const [jobs, total] = await Promise.all([
+      this.prisma.jobPost.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+        select: jobSelect,
+      }),
+      this.prisma.jobPost.count({ where }),
+    ]);
+
+    return {
+      jobs: jobs.map((job: JobPayload) => ({
+        id: job.job_post_id,
+        title: job.job_title,
+        name: job.name,
+        description: job.job_description,
+        salary: job.salary,
+        level: job.level,
+        experience: job.experience,
+        education: job.education,
+        numberOfHires: job.number_of_hires,
+        deadline: job.deadline,
+        workLocation: job.work_location,
+        workType: job.work_type,
+        applicationsCount: job._count.JobPostActivity,
+        isActive: job.is_active,
+        createdDate: job.created_date,
+        updatedDate: job.updated_date,
+        company: {
+          id: job.Company.company_id,
+          name: job.Company.company_name,
+          email: job.Company.company_email,
+          image: job.Company.company_image,
+          industry: job.Company.company_industry,
+          city: job.Company.city,
+        },
+        category: {
+          id: job.Category.category_id,
+          name: job.Category.name,
+        },
+        jobType: {
+          id: job.JobType.job_type_id,
+          name: job.JobType.job_type,
+        },
+        createdBy:
+          job.Employee && job.Employee.User
+            ? {
+                id: job.Employee.employee_id,
+                name: job.Employee.User.full_name,
+                email: job.Employee.User.email,
+              }
+            : null,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      sortBy,
+      sortOrder,
+    };
+  }
+
+  async activeJobs(query: Partial<GetAdminJobsQueryDto> = {}) {
+    return this.getJobs({ ...query, active: true });
+  }
+
+  async banJobs(query: Partial<GetAdminJobsQueryDto> = {}) {
+    return this.getJobs({ ...query, active: false });
+  }
+
+  async activateUser(userId: number) {
+    const user = await this.prisma.user.update({
+      where: { user_id: userId },
+      data: { is_active: true },
+      select: {
+        user_id: true,
+        email: true,
+        full_name: true,
+        is_active: true,
+      },
+    });
+
+    return {
+      message: 'User activated',
+      user,
+    };
+  }
+
+  async deactivateUser(userId: number) {
+    const user = await this.prisma.user.update({
+      where: { user_id: userId },
+      data: { is_active: false },
+      select: {
+        user_id: true,
+        email: true,
+        full_name: true,
+        is_active: true,
+      },
+    });
+
+    return {
+      message: 'User deactivated',
+      user,
+    };
+  }
+
+  async activateCompany(companyId: number) {
+    const company = await this.prisma.company.update({
+      where: { company_id: companyId },
+      data: { is_active: true },
+      select: {
+        company_id: true,
+        company_name: true,
+        is_active: true,
+      },
+    });
+
+    return {
+      message: 'Company activated',
+      company,
+    };
+  }
+
+  async deactivateCompany(companyId: number) {
+    const [company] = await this.prisma.$transaction([
+      this.prisma.company.update({
+        where: { company_id: companyId },
+        data: { is_active: false },
+        select: {
+          company_id: true,
+          company_name: true,
+          is_active: true,
+        },
+      }),
+      this.prisma.jobPost.updateMany({
+        where: { company_id: companyId },
+        data: { is_active: false },
+      }),
+    ]);
+
+    return {
+      message: 'Company deactivated',
+      company,
+    };
+  }
+
+  async activateJob(jobId: number) {
+    const job = await this.prisma.jobPost.update({
+      where: { job_post_id: jobId },
+      data: { is_active: true },
+      select: {
+        job_post_id: true,
+        job_title: true,
+        is_active: true,
+      },
+    });
+
+    return {
+      message: 'Job activated',
+      job,
+    };
+  }
+
+  async deactivateJob(jobId: number) {
+    const job = await this.prisma.jobPost.update({
+      where: { job_post_id: jobId },
+      data: { is_active: false },
+      select: {
+        job_post_id: true,
+        job_title: true,
+        is_active: true,
+      },
+    });
+
+    return {
+      message: 'Job deactivated',
+      job,
+    };
   }
 }
