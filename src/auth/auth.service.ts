@@ -39,6 +39,13 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: {
+        Employee: {
+          include: {
+            Company: true,
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -51,6 +58,11 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
+    if (!user.is_active) {
+      throw new UnauthorizedException(
+        'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.',
+      );
+    }
     const payload: JwtPayload = {
       sub: user.user_id,
       email: user.email,
@@ -73,6 +85,8 @@ export class AuthService {
         token: refreshToken,
       },
     });
+
+    // Format employee data for response
 
     return {
       access_token: accessToken,

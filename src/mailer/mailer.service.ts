@@ -125,14 +125,14 @@ export class MailerService {
     });
   }
   async sendRegisterEmployeeMail(payload: EmployeeCompanyRegisterDto) {
-    const to = process.env.MAILER_USER;
+    const to = payload.email;
     if (!to) {
-      this.logger.error('Thiếu email nhận thông báo hệ thống');
+      this.logger.error('Thiếu email người nhận đăng ký employee');
       return;
     }
-    const subject = 'Yeu cau dang ky employee moi';
+    const subject = 'Xac nhan dang ky employee moi';
     const html =
-      '<h2>Thong tin dang ky employee moi</h2>' +
+      '<h2>Dang ky employee cua ban da duoc ghi nhan</h2>' +
       '<p><b>Ho ten:</b> ' +
       payload.full_name +
       '</p>' +
