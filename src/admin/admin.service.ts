@@ -109,7 +109,6 @@ export class AdminService {
     }
 
     if (typeof query.active === 'boolean') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       where.is_active = query.active;
     }
 
@@ -679,25 +678,50 @@ export class AdminService {
   }
 
   async deactivateCompany(companyId: number) {
-    const [company] = await this.prisma.$transaction([
-      this.prisma.company.update({
-        where: { company_id: companyId },
-        data: { is_active: false },
-        select: {
-          company_id: true,
-          company_name: true,
-          is_active: true,
-        },
-      }),
-      this.prisma.jobPost.updateMany({
-        where: { company_id: companyId },
-        data: { is_active: false },
-      }),
-    ]);
+    const { company, bannedEmployees } = await this.prisma.$transaction(
+      async (tx) => {
+        const updatedCompany = await tx.company.update({
+          where: { company_id: companyId },
+          data: { is_active: false },
+          select: {
+            company_id: true,
+            company_name: true,
+            is_active: true,
+          },
+        });
+
+        await tx.jobPost.updateMany({
+          where: { company_id: companyId },
+          data: { is_active: false },
+        });
+
+        const employees = await tx.employee.findMany({
+          where: { company_id: companyId },
+          select: { employee_id: true },
+        });
+
+        const employeeIds = employees.map((employee) => employee.employee_id);
+
+        if (employeeIds.length > 0) {
+          await tx.user.updateMany({
+            where: {
+              user_id: { in: employeeIds },
+            },
+            data: { is_active: false },
+          });
+        }
+
+        return {
+          company: updatedCompany,
+          bannedEmployees: employeeIds.length,
+        };
+      },
+    );
 
     return {
       message: 'Company deactivated',
       company,
+      bannedEmployees,
     };
   }
 
