@@ -11,17 +11,21 @@ import {
   UseInterceptors,
   Req,
   Query,
-  BadRequestException,
   ForbiddenException,
   NotFoundException,
-  ConflictException,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { CompanyService } from './company.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 
 @Controller('companies')
 export class CompanyController {
@@ -33,12 +37,14 @@ export class CompanyController {
   @Post()
   @UseInterceptors(FileInterceptor('logo'))
   async create(
-    @Req() req: any,
+    @Req()
+    req: Request & { user?: { id: number; email: string; role: string } },
     @Body() dto: CreateCompanyDto,
     @UploadedFile() logo?: Express.Multer.File,
   ) {
     // allow only admin or owner creation
-    const user = req.user;
+    const user = req.user as { id: number; email: string; role: string };
+
     // if (!user || (user.role !== 'ADMIN' && user.role !== 'EMPLOYEE')) {
     //   throw new ForbiddenException('Không có quyền tạo company');
     // }
@@ -65,8 +71,15 @@ export class CompanyController {
 
   @ApiOperation({ summary: 'Lấy chi tiết company' })
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req: any) {
-    const company = await this.companyService.findOne(Number(id), req.user);
+  async findOne(
+    @Param('id') id: string,
+    @Req()
+    req: Request & { user?: { id: number; email: string; role: string } },
+  ) {
+    const company = await this.companyService.findOne(
+      Number(id),
+      req.user as any,
+    );
     if (!company) throw new NotFoundException('Company không tồn tại');
     return company;
   }
@@ -76,17 +89,24 @@ export class CompanyController {
   @Patch(':id')
   async update(
     @Param('id') id: string,
-    @Req() req: any,
+    @Req()
+    req: Request & { user?: { id: number; email: string; role: string } },
     @Body() dto: UpdateCompanyDto,
   ) {
-    return this.companyService.update(Number(id), dto, req.user);
+    return this.companyService.update(Number(id), dto, req.user as any);
   }
 
   @ApiOperation({ summary: 'Kích hoạt company' })
   @UseGuards(JwtAuthGuard)
   @Patch(':id/activate')
-  async activate(@Param('id') id: string, @Req() req: any) {
-    if (req.user.role !== 'ADMIN') throw new ForbiddenException('Chỉ admin');
+  async activate(
+    @Param('id') id: string,
+    @Req()
+    req: Request & { user?: { id: number; email: string; role: string } },
+  ) {
+    const user = req.user as { role: string } | undefined;
+    if (!user || user.role !== 'ADMIN')
+      throw new ForbiddenException('Chỉ admin');
     return this.companyService.activate(Number(id));
   }
 
@@ -94,8 +114,14 @@ export class CompanyController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Patch(':id/deactivate')
-  async deactivate(@Param('id') id: string, @Req() req: any) {
-    if (req.user.role !== 'ADMIN') throw new ForbiddenException('Chỉ admin');
+  async deactivate(
+    @Param('id') id: string,
+    @Req()
+    req: Request & { user?: { id: number; email: string; role: string } },
+  ) {
+    const user = req.user as { role: string } | undefined;
+    if (!user || user.role !== 'ADMIN')
+      throw new ForbiddenException('Chỉ admin');
     return this.companyService.deactivate(Number(id));
   }
 
@@ -103,8 +129,14 @@ export class CompanyController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req: any) {
-    if (req.user.role !== 'ADMIN') throw new ForbiddenException('Chỉ admin');
+  async remove(
+    @Param('id') id: string,
+    @Req()
+    req: Request & { user?: { id: number; email: string; role: string } },
+  ) {
+    const user = req.user as { role: string } | undefined;
+    if (!user || user.role !== 'ADMIN')
+      throw new ForbiddenException('Chỉ admin');
     return this.companyService.remove(Number(id));
   }
 }

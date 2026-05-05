@@ -22,20 +22,42 @@ export class EmployeesService {
       where: { email: dto.email },
     });
     if (user) {
-      throw new ConflictException('user đã tồn tại');
+      throw new ConflictException('user da ton tai');
     }
-    const company = await this.prisma.company.findUnique({
-      where: { company_id: dto.company_id },
-    });
+
+    let company =
+      typeof dto.company_id === 'number'
+        ? await this.prisma.company.findUnique({
+            where: { company_id: dto.company_id },
+          })
+        : null;
+
+    if (dto.company_id && !company) {
+      throw new ConflictException('company khong ton tai');
+    }
 
     if (!company) {
-      throw new ConflictException('company không tồn tại');
+      company = await this.prisma.company.findFirst({
+        where: { company_name: dto.company_name },
+      });
     }
 
     const rawPassword = randomUUID().replace(/-/g, '').slice(0, 12);
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      const resolvedCompany =
+        company ??
+        (await tx.company.create({
+          data: {
+            company_name: dto.company_name,
+            city: dto.company_address || null,
+            company_website_url: dto.company_website_url || null,
+            company_email: dto.email,
+            is_active: true,
+          },
+        }));
+
       const createdUser = await tx.user.create({
         data: {
           full_name: dto.full_name,
@@ -50,14 +72,14 @@ export class EmployeesService {
 
       const employee = await tx.employee.create({
         data: {
-          company_id: dto.company_id,
+          company_id: resolvedCompany.company_id,
           joined_date: dto.joined_date ?? new Date(),
           employee_id: createdUser.user_id,
           role: dto.role,
         },
       });
 
-      return { createdUser, employee };
+      return { createdUser, employee, company: resolvedCompany };
     });
 
     this.mailsService.sendNewAccountToEmployee(dto.email, rawPassword);
@@ -66,6 +88,8 @@ export class EmployeesService {
       message: 'Created successfully and account email sent',
       user_id: created.createdUser.user_id,
       employee_id: created.employee.employee_id,
+      company_id: created.company.company_id,
+      company_name: created.company.company_name,
     };
   }
 
@@ -660,7 +684,7 @@ export class EmployeesService {
       where: { employee_id },
     });
     if (!existed) {
-      throw new ConflictException('employee không tồn tại');
+      throw new ConflictException('employee khong ton tai');
     }
     await this.prisma.employee.update({ where: { employee_id }, data: dto });
     return { message: 'Update successfully' };
@@ -671,7 +695,7 @@ export class EmployeesService {
       where: { employee_id: id },
     });
     if (!existed) {
-      throw new ConflictException('employee không tồn tại');
+      throw new ConflictException('employee khong ton tai');
     }
     await this.prisma.employee.delete({ where: { employee_id: id } });
     return { message: 'Deleted successfully' };

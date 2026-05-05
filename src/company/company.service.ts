@@ -27,13 +27,18 @@ export class CompanyService {
       // ensure dir exists (best-effort)
       await writeFile(join(uploadsDir, name), file.buffer);
       return `/uploads/${name}`;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // fallback: ignore and return undefined
       return undefined;
     }
   }
 
-  async create(dto: CreateCompanyDto, user: any, logo?: Express.Multer.File) {
+  async create(
+    dto: CreateCompanyDto,
+    user: { sub?: number; role?: string } | null,
+    logo?: Express.Multer.File,
+  ) {
     if (!dto?.company_name)
       throw new BadRequestException('company_name required');
 
@@ -56,7 +61,7 @@ export class CompanyService {
     }
 
     // upload logo if provided (local save only)
-    let imageUrl: string | null = null;
+    const imageUrl: string | null = null;
     if (logo && logo.buffer) {
       // imageUrl = await this.saveFileLocally(logo);
     }
@@ -110,11 +115,13 @@ export class CompanyService {
 
     // filter industry (insensitive)
     if (opts.industry) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       where.company_industry = { contains: opts.industry, mode: 'insensitive' };
     }
 
     // filter text search
     if (opts.q) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       where.OR = [
         { company_name: { contains: opts.q, mode: 'insensitive' } },
         { profile_description: { contains: opts.q, mode: 'insensitive' } },
@@ -126,18 +133,20 @@ export class CompanyService {
 
     const [companies, total] = await Promise.all([
       this.prisma.company.findMany({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         where,
         skip,
         take: pageSize,
         orderBy: { created_date: 'desc' },
       }),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       this.prisma.company.count({ where }),
     ]);
 
     return { companies, total };
   }
 
-  async findOne(id: number, user: any) {
+  async findOne(id: number, user: { sub?: number; role?: string } | null) {
     const company = await this.prisma.company.findUnique({
       where: { company_id: id },
       include: { Employee: true, JobPost: true },
@@ -145,9 +154,12 @@ export class CompanyService {
     if (!company) return null;
 
     // anonymize if company inactive and requester not admin or employee
-    const isEmployee = await this.prisma.employee.findFirst({
-      where: { company_id: id, employee_id: user?.sub },
-    });
+    const userId = typeof user?.sub === 'number' ? user.sub : undefined;
+    const isEmployee = userId
+      ? await this.prisma.employee.findFirst({
+          where: { company_id: id, employee_id: userId },
+        })
+      : null;
     if (!company.is_active && user?.role !== 'ADMIN' && !isEmployee) {
       return {
         ...company,
@@ -163,22 +175,29 @@ export class CompanyService {
     };
   }
 
-  async update(id: number, dto: UpdateCompanyDto, user: any) {
+  async update(
+    id: number,
+    dto: UpdateCompanyDto,
+    user: { sub?: number; role?: string } | null,
+  ) {
     const company = await this.prisma.company.findUnique({
       where: { company_id: id },
     });
     if (!company) throw new NotFoundException('Company không tồn tại');
 
     // only owner or admin can update
-    const isOwner = await this.prisma.employee.findFirst({
-      where: { company_id: id, employee_id: user?.sub },
-    });
+    const userId = typeof user?.sub === 'number' ? user.sub : undefined;
+    const isOwner = userId
+      ? await this.prisma.employee.findFirst({
+          where: { company_id: id, employee_id: userId },
+        })
+      : null;
     if (!isOwner && user?.role !== 'ADMIN')
       throw new BadRequestException('Bạn không phải owner');
 
     // if email changed we could trigger re-verification (left as TODO)
 
-    const data: any = {};
+    const data: Partial<UpdateCompanyDto> = {};
     if (dto.company_name !== undefined) data.company_name = dto.company_name;
     if (dto.profile_description !== undefined)
       data.profile_description = dto.profile_description ?? null;
@@ -187,9 +206,7 @@ export class CompanyService {
     if (dto.company_industry !== undefined)
       data.company_industry = dto.company_industry ?? null;
     if (dto.establishment_date !== undefined)
-      data.establishment_date = dto.establishment_date
-        ? new Date(dto.establishment_date)
-        : null;
+      data.establishment_date = dto.establishment_date ?? undefined;
     if (dto.company_size !== undefined)
       data.company_size = dto.company_size ?? null;
     if (dto.country !== undefined) data.country = dto.country ?? null;
