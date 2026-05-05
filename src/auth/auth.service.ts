@@ -58,6 +58,11 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
+    if (!user.is_active) {
+      throw new UnauthorizedException(
+        'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.',
+      );
+    }
     const payload: JwtPayload = {
       sub: user.user_id,
       email: user.email,
