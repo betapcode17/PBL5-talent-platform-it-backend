@@ -27,6 +27,54 @@ export class CloudinaryService {
     });
   }
 
+  async uploadCvFile(file: {
+    buffer: Buffer;
+  }): Promise<{ url: string; public_id: string }> {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder: 'cv',
+            resource_type: 'raw',
+          },
+          (error, result) => {
+            if (error)
+              return reject(new Error(error.message || 'Upload error'));
+            if (!result) return reject(new Error('Upload failed'));
+            resolve({
+              url: result.secure_url,
+              public_id: result.public_id,
+            });
+          },
+        )
+        .end(file.buffer);
+    });
+  }
+
+  async uploadCertificateFile(file: {
+    buffer: Buffer;
+  }): Promise<{ url: string; public_id: string }> {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder: 'certificates',
+            resource_type: 'auto',
+          },
+          (error, result) => {
+            if (error)
+              return reject(new Error(error.message || 'Upload error'));
+            if (!result) return reject(new Error('Upload failed'));
+            resolve({
+              url: result.secure_url,
+              public_id: result.public_id,
+            });
+          },
+        )
+        .end(file.buffer);
+    });
+  }
+
   async delete(publicId: string): Promise<{ result: string }> {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return cloudinary.uploader.destroy(publicId);

@@ -284,7 +284,111 @@ model Seeker {
   SeekerExperience     SeekerExperience[]
   SeekerProfileSummary SeekerProfileSummary?
   SeekerProject        SeekerProject[]
+  SeekerPersonality    SeekerPersonality[]
   SeekerSkill          SeekerSkill[]
+  CvEducation          CvEducation[]
+  CvExperience         CvExperience[]
+  CvSkill              CvSkill[]
+  CvPersonality        CvPersonality[]
+  CvCertificate        CvCertificate[]
+  CvProject            CvProject[]
+}
+
+model CvEducation {
+  id          String   @id @default(uuid())
+  userId      Int
+  school      String
+  degree      String
+  major       String?
+  startDate   DateTime
+  endDate     DateTime?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Seeker      Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CvExperience {
+  id          String   @id @default(uuid())
+  userId      Int
+  company     String
+  position    String
+  startDate   DateTime
+  endDate     DateTime?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Seeker      Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CvSkill {
+  id        String   @id @default(uuid())
+  userId    Int
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Seeker    Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model CvPersonality {
+  id          String   @id @default(uuid())
+  userId      Int
+  type        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Seeker      Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CvCertificate {
+  id         String    @id @default(uuid())
+  userId     Int
+  title      String
+  issuer     String
+  issuedDate DateTime?
+  fileUrl    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  Seeker     Seeker    @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CvProject {
+  id          String    @id @default(uuid())
+  userId      Int
+  name        String
+  description String?
+  link        String?
+  role        String?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Seeker      Seeker    @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SeekerPersonality {
+  personality_id Int      @id @default(autoincrement())
+  seeker_id      Int
+  name           String
+  description    String?
+  created_date   DateTime @default(now())
+  updated_date   DateTime
+  Seeker         Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+
+  @@index([seeker_id])
 }
 
 model SeekerCertificate {
