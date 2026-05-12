@@ -3,7 +3,6 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import * as dotenv from 'dotenv';
 dotenv.config();
-console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY);
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {

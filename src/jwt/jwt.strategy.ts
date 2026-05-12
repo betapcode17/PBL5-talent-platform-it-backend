@@ -12,7 +12,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
   validate(payload: JwtPayload) {
-    console.log('JWT PAYLOAD >>>', payload);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return payload;
   }
