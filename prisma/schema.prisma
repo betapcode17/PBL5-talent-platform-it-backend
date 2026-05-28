@@ -77,6 +77,10 @@ model CompanySeekerLike {
   Company                Company  @relation(fields: [company_id], references: [company_id])
   Employee               Employee @relation(fields: [liked_by_employee_id], references: [employee_id])
   Seeker                 Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+
+  @@unique([company_id, seeker_id])
+  @@index([company_id])
+  @@index([seeker_id])
 }
 
 model Chat {
