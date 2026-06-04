@@ -19,6 +19,7 @@ import { InterviewsModule } from './interviews/interviews.module.js';
 import { ApplicationsModule } from './applications/applications.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { CvModule } from './cv/cv.module.js';
+import { LikesModule } from './likes/likes.module.js';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { CvModule } from './cv/cv.module.js';
     InterviewsModule,
     AdminModule,
     CvModule,
+    LikesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

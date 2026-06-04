@@ -181,7 +181,6 @@ export class JobsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
-
     const salaryMinValue = salaryMinRaw
       ? this.parseCurrencyToNumber(salaryMinRaw)
       : null;
