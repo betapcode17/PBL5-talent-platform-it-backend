@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma.service.js';
 import { GetAdminCompaniesQueryDto } from './dto/get-admin-companies.query.dto.js';
 import { GetAdminStatisticsQueryDto } from './dto/get-admin-statistics.query.dto.js';
 import { GetAdminUsersQueryDto } from './dto/get-admin-users.query.dto.js';
 import { GetAdminJobsQueryDto } from './dto/get-admin-jobs.query.dto.js';
+import { GetEmployerRegistrationRequestsQueryDto } from './dto/get-employer-registration-requests.query.dto.js';
+import { MailsService } from '../mails/mails.service.js';
+import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 type TimeBucket = {
   label: string;
@@ -21,7 +25,10 @@ type ChartRow = {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailsService: MailsService,
+  ) {}
 
   async getStatistics(query: GetAdminStatisticsQueryDto) {
     const dailyDays = query.dailyDays ?? 30;
@@ -295,6 +302,138 @@ export class AdminService {
 
   async banCompanies(query: Partial<GetAdminCompaniesQueryDto> = {}) {
     return this.getCompanies({ ...query, active: false });
+  }
+
+  async getEmployerRegistrationRequests(
+    query: Partial<GetEmployerRegistrationRequestsQueryDto> = {},
+  ) {
+    const baseWhere: Prisma.EmployerRegistrationRequestWhereInput = {};
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const search = query.search?.trim();
+    const role = query.role?.trim();
+
+    if (search) {
+      baseWhere.OR = [
+        { full_name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { company_name: { contains: search, mode: 'insensitive' } },
+        { company_address: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const where: Prisma.EmployerRegistrationRequestWhereInput = {
+      ...baseWhere,
+    };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (role) {
+      where.role = { contains: role, mode: 'insensitive' };
+    }
+
+    const statusCountWhere: Prisma.EmployerRegistrationRequestWhereInput = {
+      ...baseWhere,
+      ...(role ? { role: { contains: role, mode: 'insensitive' } } : {}),
+    };
+
+    const roleCountWhere: Prisma.EmployerRegistrationRequestWhereInput = {
+      ...baseWhere,
+      ...(query.status ? { status: query.status } : {}),
+    };
+
+    const [requests, total, statusCounts, roleCounts] = await Promise.all([
+      this.prisma.employerRegistrationRequest.findMany({
+        where,
+        orderBy: { created_date: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          request_id: true,
+          full_name: true,
+          email: true,
+          phone: true,
+          role: true,
+          joined_date: true,
+          company_name: true,
+          company_address: true,
+          company_website_url: true,
+          status: true,
+          review_note: true,
+          generated_login_email: true,
+          approved_at: true,
+          rejected_at: true,
+          created_date: true,
+          updated_date: true,
+          company_id: true,
+          created_user_id: true,
+        },
+      }),
+      this.prisma.employerRegistrationRequest.count({ where }),
+      this.prisma.employerRegistrationRequest.groupBy({
+        by: ['status'],
+        where: statusCountWhere,
+        _count: { _all: true },
+      }),
+      this.prisma.employerRegistrationRequest.groupBy({
+        by: ['role'],
+        where: roleCountWhere,
+        _count: { _all: true },
+        orderBy: { role: 'asc' },
+      }),
+    ]);
+
+    const statusSummary = statusCounts.reduce(
+      (accumulator, item) => ({
+        ...accumulator,
+        [item.status.toLowerCase()]: item._count._all,
+      }),
+      {
+        total: statusCounts.reduce((sum, item) => sum + item._count._all, 0),
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+      } as {
+        total: number;
+        pending: number;
+        approved: number;
+        rejected: number;
+      },
+    );
+
+    return {
+      requests: requests.map((request) => ({
+        id: request.request_id,
+        fullName: request.full_name,
+        email: request.email,
+        phone: request.phone,
+        role: request.role,
+        joinedDate: request.joined_date,
+        companyName: request.company_name,
+        companyAddress: request.company_address,
+        companyWebsiteUrl: request.company_website_url,
+        status: request.status,
+        reviewNote: request.review_note,
+        generatedLoginEmail: request.generated_login_email,
+        approvedAt: request.approved_at,
+        rejectedAt: request.rejected_at,
+        createdDate: request.created_date,
+        updatedDate: request.updated_date,
+        companyId: request.company_id,
+        createdUserId: request.created_user_id,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      statusCounts: statusSummary,
+      roleCounts: roleCounts.map((item) => ({
+        role: item.role,
+        count: item._count._all,
+      })),
+    };
   }
 
   private buildDailyBuckets(days: number): TimeBucket[] {
@@ -622,6 +761,171 @@ export class AdminService {
 
   async banJobs(query: Partial<GetAdminJobsQueryDto> = {}) {
     return this.getJobs({ ...query, active: false });
+  }
+
+  async approveEmployerRegistrationRequest(requestId: number, note?: string) {
+    const request = await this.prisma.employerRegistrationRequest.findUnique({
+      where: { request_id: requestId },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Employer registration request not found');
+    }
+
+    if (request.status !== 'PENDING') {
+      throw new BadRequestException(
+        'Employer registration request has already been reviewed',
+      );
+    }
+
+    const rawPassword = randomUUID().replace(/-/g, '').slice(0, 12);
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const company = await tx.company.create({
+        data: {
+          company_name: request.company_name,
+          city: request.company_address || null,
+          company_website_url: request.company_website_url || null,
+          company_email: request.email,
+          is_active: true,
+        },
+      });
+
+      const loginEmail = await this.buildEmployerLoginEmail(
+        tx,
+        request.company_name,
+      );
+
+      const user = await tx.user.create({
+        data: {
+          full_name: request.full_name,
+          phone: request.phone,
+          email: loginEmail,
+          password: hashedPassword,
+          role: 'EMPLOYEE',
+          is_active: true,
+          registration_date: new Date(),
+        },
+      });
+
+      const employee = await tx.employee.create({
+        data: {
+          employee_id: user.user_id,
+          company_id: company.company_id,
+          role: request.role,
+          joined_date: request.joined_date ?? new Date(),
+        },
+      });
+
+      const updatedRequest = await tx.employerRegistrationRequest.update({
+        where: { request_id: requestId },
+        data: {
+          status: 'APPROVED',
+          review_note: note || null,
+          company_id: company.company_id,
+          created_user_id: user.user_id,
+          generated_login_email: loginEmail,
+          approved_at: new Date(),
+        },
+      });
+
+      return { company, user, employee, request: updatedRequest, loginEmail };
+    });
+
+    this.mailsService.sendEmployerApprovalCredential({
+      recipientEmail: request.email,
+      applicantName: request.full_name,
+      companyName: result.company.company_name,
+      loginEmail: result.loginEmail,
+      password: rawPassword,
+    });
+
+    return {
+      message: 'Employer registration request approved',
+      requestId: result.request.request_id,
+      companyId: result.company.company_id,
+      employeeId: result.employee.employee_id,
+      userId: result.user.user_id,
+      generatedLoginEmail: result.loginEmail,
+    };
+  }
+
+  async rejectEmployerRegistrationRequest(requestId: number, note?: string) {
+    const request = await this.prisma.employerRegistrationRequest.findUnique({
+      where: { request_id: requestId },
+      select: {
+        request_id: true,
+        status: true,
+        email: true,
+        full_name: true,
+        company_name: true,
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Employer registration request not found');
+    }
+
+    if (request.status !== 'PENDING') {
+      throw new BadRequestException(
+        'Employer registration request has already been reviewed',
+      );
+    }
+
+    const updatedRequest = await this.prisma.employerRegistrationRequest.update(
+      {
+        where: { request_id: requestId },
+        data: {
+          status: 'REJECTED',
+          review_note: note || null,
+          rejected_at: new Date(),
+        },
+      },
+    );
+
+    this.mailsService.sendEmployerRegistrationRejected({
+      recipientEmail: request.email,
+      applicantName: request.full_name,
+      companyName: request.company_name,
+      reason: note || null,
+    });
+
+    return {
+      message: 'Employer registration request rejected',
+      requestId: updatedRequest.request_id,
+    };
+  }
+
+  private async buildEmployerLoginEmail(
+    tx: Prisma.TransactionClient,
+    companyName: string,
+  ) {
+    const domain = process.env.EMPLOYER_LOGIN_EMAIL_DOMAIN || 'employer.local';
+    const baseSlug = this.slugifyCompanyName(companyName) || 'employer';
+    let candidate = `${baseSlug}@${domain}`;
+    let counter = 1;
+
+    while (
+      await tx.user.findUnique({
+        where: { email: candidate },
+        select: { user_id: true },
+      })
+    ) {
+      counter += 1;
+      candidate = `${baseSlug}-${counter}@${domain}`;
+    }
+
+    return candidate;
+  }
+
+  private slugifyCompanyName(companyName: string) {
+    return companyName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
   }
 
   async activateUser(userId: number) {

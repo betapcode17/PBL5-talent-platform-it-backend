@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -49,18 +49,18 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
+      throw new UnauthorizedException('Email hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.password);
 
     if (!isMatch) {
-      throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
+      throw new UnauthorizedException('Email hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng');
     }
 
     if (!user.is_active) {
       throw new UnauthorizedException(
-        'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.',
+        'TÃ i khoáº£n cá»§a báº¡n Ä‘Ã£ bá»‹ khÃ³a. Vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn Ä‘á»ƒ biáº¿t thÃªm chi tiáº¿t.',
       );
     }
     const payload: JwtPayload = {
@@ -106,7 +106,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new BadRequestException('Email đã tồn tại');
+      throw new BadRequestException('Email Ä‘Ã£ tá»“n táº¡i');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -126,7 +126,7 @@ export class AuthService {
     });
 
     return {
-      message: 'Đăng ký thành công',
+      message: 'ÄÄƒng kÃ½ thÃ nh cÃ´ng',
       user: {
         id: user.user_id,
         email: user.email,
@@ -149,7 +149,7 @@ export class AuthService {
     });
 
     if (!storedToken) {
-      throw new UnauthorizedException('Refresh token không hợp lệ');
+      throw new UnauthorizedException('Refresh token khÃ´ng há»£p lá»‡');
     }
 
     const payload = await this.jwtService.verifyAsync<JwtPayload>(
@@ -188,15 +188,15 @@ export class AuthService {
     });
 
     return {
-      message: 'Đăng xuất thành công',
+      message: 'ÄÄƒng xuáº¥t thÃ nh cÃ´ng',
     };
   }
   async googleOneTapLogin(credential: string) {
     if (!process.env.GOOGLE_CLIENT_ID) {
-      throw new BadRequestException('GOOGLE_CLIENT_ID chưa được cấu hình');
+      throw new BadRequestException('GOOGLE_CLIENT_ID chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh');
     }
 
-    // Verify token từ Google
+    // Verify token tá»« Google
     const ticket = await this.googleClient.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -250,7 +250,7 @@ export class AuthService {
       );
 
       if (!githubEmailResponse.ok) {
-        throw new ForbiddenException('Không lấy được email từ Github');
+        throw new ForbiddenException('KhÃ´ng láº¥y Ä‘Æ°á»£c email tá»« Github');
       }
 
       const emails = (await githubEmailResponse.json()) as
@@ -267,7 +267,7 @@ export class AuthService {
     }
 
     if (!email) {
-      throw new ForbiddenException('Github account không có email khả dụng');
+      throw new ForbiddenException('Github account khÃ´ng cÃ³ email kháº£ dá»¥ng');
     }
 
     return this.socialLogin(email, fullName, avatar, 'Github');
@@ -295,7 +295,7 @@ export class AuthService {
     const avatar = facebookProfile.picture?.data?.url || '';
 
     if (!email) {
-      throw new ForbiddenException('Facebook account chưa cung cấp email');
+      throw new ForbiddenException('Facebook account chÆ°a cung cáº¥p email');
     }
 
     return this.socialLogin(email, fullName, avatar, 'Facebook');
@@ -374,7 +374,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException('Email không tồn tại');
+      throw new BadRequestException('Email khÃ´ng tá»“n táº¡i');
     }
 
     const token = randomUUID();
@@ -404,7 +404,7 @@ export class AuthService {
 
     if (!dto.password || typeof dto.password !== 'string') {
       this.logger.warn('[resetPassword] invalid password payload');
-      throw new BadRequestException('Password phải là string hợp lệ');
+      throw new BadRequestException('Password pháº£i lÃ  string há»£p lá»‡');
     }
 
     const record = await this.prisma.token.findUnique({
@@ -418,12 +418,12 @@ export class AuthService {
 
     if (!record || record.type !== 'RESET') {
       this.logger.warn('[resetPassword] token invalid or wrong type');
-      throw new BadRequestException('Token không hợp lệ');
+      throw new BadRequestException('Token khÃ´ng há»£p lá»‡');
     }
 
     if (record.expiresAt && record.expiresAt < new Date()) {
       this.logger.warn('[resetPassword] token expired');
-      throw new BadRequestException('Token đã hết hạn');
+      throw new BadRequestException('Token Ä‘Ã£ háº¿t háº¡n');
     }
 
     const hashed = await bcrypt.hash(dto.password, 10);
@@ -483,7 +483,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException('User không tồn tại');
+      throw new BadRequestException('User khÃ´ng tá»“n táº¡i');
     }
 
     return {
@@ -508,10 +508,40 @@ export class AuthService {
   }
 
   async employeeCompanyRegister(dto: EmployeeCompanyRegisterDto) {
-    await this.mailsService.sendEmployeeCompanyRegisterMail(dto);
+    const duplicatedPending =
+      await this.prisma.employerRegistrationRequest.findFirst({
+        where: {
+          email: dto.email,
+          company_name: dto.company_name,
+          status: 'PENDING',
+        },
+        select: { request_id: true },
+      });
+
+    if (duplicatedPending) {
+      throw new BadRequestException(
+        'Yeu cau dang ky nha tuyen dung nay dang cho admin duyet',
+      );
+    }
+
+    const request = await this.prisma.employerRegistrationRequest.create({
+      data: {
+        full_name: dto.full_name,
+        email: dto.email,
+        phone: dto.phone,
+        role: dto.role,
+        joined_date: dto.joined_date,
+        company_name: dto.company_name,
+        company_address: dto.company_address,
+        company_website_url: dto.company_website_url || null,
+      },
+    });
 
     return {
-      message: 'Đã gửi thông tin đăng ký nhân viên đến hệ thống',
+      message:
+        'Dang ky nha tuyen dung da duoc ghi nhan va dang cho admin duyet',
+      request_id: request.request_id,
+      status: request.status,
     };
   }
 }

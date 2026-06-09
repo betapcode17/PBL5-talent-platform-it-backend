@@ -111,7 +111,9 @@ export class CompanyService {
   async findAll(opts: { page: number; industry?: string; q?: string }) {
     const pageSize = 10;
     const skip = (opts.page - 1) * pageSize;
-    const where: any = {};
+    const where: any = {
+      is_active: true,
+    };
 
     // filter industry (insensitive)
     if (opts.industry) {
@@ -153,7 +155,7 @@ export class CompanyService {
     });
     if (!company) return null;
 
-    // anonymize if company inactive and requester not admin or employee
+    // Hide inactive companies from public frontend views.
     const userId = typeof user?.sub === 'number' ? user.sub : undefined;
     const isEmployee = userId
       ? await this.prisma.employee.findFirst({
@@ -161,17 +163,16 @@ export class CompanyService {
         })
       : null;
     if (!company.is_active && user?.role !== 'ADMIN' && !isEmployee) {
-      return {
-        ...company,
-        company_email: null,
-        company_website_url: null,
-      };
+      return null;
     }
 
     return {
       company,
       employees: company.Employee ?? [],
-      jobs: company.JobPost ?? [],
+      jobs:
+        user?.role === 'ADMIN' || isEmployee
+          ? (company.JobPost ?? [])
+          : (company.JobPost ?? []).filter((job) => job.is_active),
     };
   }
 

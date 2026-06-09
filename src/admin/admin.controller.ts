@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
@@ -20,6 +21,8 @@ import { GetAdminCompaniesQueryDto } from './dto/get-admin-companies.query.dto.j
 import { GetAdminStatisticsQueryDto } from './dto/get-admin-statistics.query.dto.js';
 import { GetAdminUsersQueryDto } from './dto/get-admin-users.query.dto.js';
 import { GetAdminJobsQueryDto } from './dto/get-admin-jobs.query.dto.js';
+import { GetEmployerRegistrationRequestsQueryDto } from './dto/get-employer-registration-requests.query.dto.js';
+import { ReviewEmployerRegistrationDto } from './dto/review-employer-registration.dto.js';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -220,6 +223,44 @@ export class AdminController {
   @Patch('companies/:id/deactivate')
   deactivateCompany(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.deactivateCompany(id);
+  }
+
+  @ApiOperation({ summary: 'Lay danh sach yeu cau dang ky nha tuyen dung cho admin (ADMIN)' })
+  @ApiQuery({ name: 'search', required: false, example: 'tech company' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['PENDING', 'APPROVED', 'REJECTED'],
+  })
+  @ApiQuery({ name: 'role', required: false, example: 'Recruiter' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @Get('employer-registration-requests')
+  getEmployerRegistrationRequests(
+    @Query() query: GetEmployerRegistrationRequestsQueryDto,
+  ) {
+    return this.adminService.getEmployerRegistrationRequests(query);
+  }
+
+  @ApiOperation({ summary: 'Phe duyet yeu cau dang ky nha tuyen dung va tao moi cong ty + tai khoan (ADMIN)' })
+  @Patch('employer-registration-requests/:id/approve')
+  approveEmployerRegistrationRequest(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: ReviewEmployerRegistrationDto,
+  ) {
+    return this.adminService.approveEmployerRegistrationRequest(
+      id,
+      body.note,
+    );
+  }
+
+  @ApiOperation({ summary: 'Tu choi yeu cau dang ky nha tuyen dung (ADMIN)' })
+  @Patch('employer-registration-requests/:id/reject')
+  rejectEmployerRegistrationRequest(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: ReviewEmployerRegistrationDto,
+  ) {
+    return this.adminService.rejectEmployerRegistrationRequest(id, body.note);
   }
 
   @ApiOperation({ summary: 'Kich hoat job theo ID (ADMIN)' })
