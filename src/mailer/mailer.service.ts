@@ -5,6 +5,21 @@ import fs from 'fs/promises';
 import path from 'path';
 import { EmployeeCompanyRegisterDto } from 'src/auth/dto/employee-company-register.dto.js';
 
+export type EmployerApprovalCredentialPayload = {
+  recipientEmail: string;
+  applicantName?: string | null;
+  companyName: string;
+  loginEmail: string;
+  password: string;
+};
+
+export type EmployerRegistrationRejectedPayload = {
+  recipientEmail: string;
+  applicantName?: string | null;
+  companyName: string;
+  reason?: string | null;
+};
+
 export type InterviewMailPayload = {
   recipientEmail: string;
   recipientName?: string | null;
@@ -161,6 +176,63 @@ export class MailerService {
       html,
     });
     this.logger.log('Da gui mail thong bao dang ky employee cho he thong');
+  }
+
+  async sendEmployerApprovalCredentialMail(
+    payload: EmployerApprovalCredentialPayload,
+  ) {
+    if (!payload.recipientEmail) {
+      this.logger.error('Thieu recipientEmail de gui tai khoan employer');
+      return;
+    }
+
+    const subject = `Tai khoan nha tuyen dung cho ${payload.companyName}`;
+    const html =
+      `<h2>Yeu cau dang ky nha tuyen dung da duoc phe duyet</h2>` +
+      `<p>Xin chao ${payload.applicantName || 'ban'},</p>` +
+      `<p>He thong da tao moi cong ty va tai khoan nha tuyen dung cho <b>${payload.companyName}</b>.</p>` +
+      `<p><b>Email dang nhap:</b> ${payload.loginEmail}</p>` +
+      `<p><b>Mat khau tam:</b> ${payload.password}</p>` +
+      `<p>Vui long dang nhap va doi mat khau ngay sau lan dau tien.</p>`;
+
+    await this.transporter.sendMail({
+      to: payload.recipientEmail,
+      subject,
+      html,
+    });
+
+    this.logger.log(
+      `Da gui thong tin tai khoan employer moi den ${payload.recipientEmail}`,
+    );
+  }
+
+  async sendEmployerRegistrationRejectedMail(
+    payload: EmployerRegistrationRejectedPayload,
+  ) {
+    if (!payload.recipientEmail) {
+      this.logger.error('Thieu recipientEmail de gui ket qua tu choi employer');
+      return;
+    }
+
+    const subject = `Ket qua dang ky nha tuyen dung cho ${payload.companyName}`;
+    const html =
+      `<h2>Yeu cau dang ky nha tuyen dung chua duoc phe duyet</h2>` +
+      `<p>Xin chao ${payload.applicantName || 'ban'},</p>` +
+      `<p>Yeu cau dang ky cho <b>${payload.companyName}</b> da duoc admin xem xet nhung hien chua duoc phe duyet.</p>` +
+      (payload.reason
+        ? `<p><b>Ly do:</b> ${payload.reason}</p>`
+        : `<p><b>Ly do:</b> Chua dap ung du thong tin xet duyet.</p>`) +
+      `<p>Vui long cap nhat thong tin va dang ky lai neu can.</p>`;
+
+    await this.transporter.sendMail({
+      to: payload.recipientEmail,
+      subject,
+      html,
+    });
+
+    this.logger.log(
+      `Da gui email tu choi employer den ${payload.recipientEmail}`,
+    );
   }
   async sendNewAccountToEmployeeMail(email: string, password: string) {
     const to = email;
