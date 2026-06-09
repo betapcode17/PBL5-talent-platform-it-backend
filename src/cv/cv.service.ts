@@ -66,9 +66,13 @@ export class CvService {
 
   async findOne(id: number, user: RequestUser) {
     this.ensureCanViewCv(id, user);
+    const seekerId =
+      user.role === 'SEEKER' && user.sub === id
+        ? await this.getOrCreateMyCv(user.sub)
+        : id;
 
     const cv = await this.prisma.seeker.findUnique({
-      where: { seeker_id: id },
+      where: { seeker_id: seekerId },
       select: {
         seeker_id: true,
         file_cv: true,
@@ -133,6 +137,9 @@ export class CvService {
       skills: cv.CvSkill.map((item) => ({
         id: item.id,
         name: item.name,
+        category: item.category,
+        experienceMonths: item.experienceMonths,
+        isStrong: item.isStrong,
       })),
       personalities: cv.CvPersonality.map((item) => ({
         id: item.id,
@@ -372,22 +379,22 @@ export class CvService {
 
   async createSkills(user: RequestUser, dto: CreateSkillsDto) {
     const seekerId = await this.getOrCreateMyCv(user.sub);
-    const skillNames = this.normalizeSkillNames(dto.skills);
+    const skills = this.normalizeSkillItems(dto.skills);
 
     return this.prisma.$transaction(async (tx) => {
       const currentSkillCount = await tx.cvSkill.count({
         where: { userId: seekerId },
       });
 
-      if (currentSkillCount + skillNames.length > MAX_SKILLS_PER_CV) {
+      if (currentSkillCount + skills.length > MAX_SKILLS_PER_CV) {
         throw new BadRequestException('Moi CV chi duoc co toi da 20 skills');
       }
 
       const existingSkills = await tx.cvSkill.findMany({
         where: {
           userId: seekerId,
-          OR: skillNames.map((name) => ({
-            name: { equals: name, mode: 'insensitive' as const },
+          OR: skills.map((skill) => ({
+            name: { equals: skill.name, mode: 'insensitive' as const },
           })),
         },
         select: { name: true },
@@ -398,11 +405,14 @@ export class CvService {
       }
 
       const created = await Promise.all(
-        skillNames.map((name) =>
+        skills.map((skill) =>
           tx.cvSkill.create({
             data: {
               userId: seekerId,
-              name,
+              name: skill.name,
+              category: skill.category,
+              experienceMonths: skill.experienceMonths,
+              isStrong: skill.isStrong,
             },
             select: { id: true },
           }),
@@ -421,6 +431,9 @@ export class CvService {
       select: {
         id: true,
         name: true,
+        category: true,
+        experienceMonths: true,
+        isStrong: true,
       },
     });
 
@@ -450,7 +463,12 @@ export class CvService {
 
     const updated = await this.prisma.cvSkill.update({
       where: { id },
-      data: { name: dto.name },
+      data: {
+        name: dto.name,
+        category: dto.category,
+        experienceMonths: dto.experienceMonths,
+        isStrong: dto.isStrong,
+      },
     });
 
     return { updated };
@@ -838,24 +856,49 @@ export class CvService {
     }
   }
 
-  private normalizeSkillNames(skills: string[]) {
-    const trimmedSkills = skills.map((skill) => skill.trim()).filter(Boolean);
+  private normalizeSkillItems(
+    skills: Array<{
+      name: string;
+      category?: string | null;
+      experienceMonths?: number | null;
+      isStrong?: boolean;
+    } | string>,
+  ) {
+    const normalizedSkills = skills
+      .map((skill) => {
+        if (typeof skill === 'string') {
+          return {
+            name: skill.trim(),
+            category: null,
+            experienceMonths: null,
+            isStrong: false,
+          };
+        }
+
+        return {
+          name: skill.name.trim(),
+          category: skill.category?.trim() || null,
+          experienceMonths: skill.experienceMonths ?? null,
+          isStrong: skill.isStrong ?? false,
+        };
+      })
+      .filter((skill) => skill.name);
     const uniqueKeys = new Set(
-      trimmedSkills.map((skill) => skill.toLowerCase()),
+      normalizedSkills.map((skill) => skill.name.toLowerCase()),
     );
 
     if (
-      trimmedSkills.length !== skills.length ||
-      uniqueKeys.size !== trimmedSkills.length
+      normalizedSkills.length !== skills.length ||
+      uniqueKeys.size !== normalizedSkills.length
     ) {
       throw new BadRequestException('Skills khong duoc trung nhau');
     }
 
-    if (trimmedSkills.length > MAX_SKILLS_PER_CV) {
+    if (normalizedSkills.length > MAX_SKILLS_PER_CV) {
       throw new BadRequestException('Moi lan them toi da 20 skills');
     }
 
-    return trimmedSkills;
+    return normalizedSkills;
   }
 
   private ensureOwner<T extends { userId: number } | null>(
