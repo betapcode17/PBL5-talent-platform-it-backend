@@ -3,12 +3,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { NotificationType } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
 import { CreateBookmarkDto } from './dto/create-bookmark.dto.js';
 
 @Injectable()
 export class BookmarksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(userId: number, dto: CreateBookmarkDto) {
     const seekerId = await this.ensureSeekerProfile(userId);
@@ -18,6 +23,10 @@ export class BookmarksService {
       select: {
         job_post_id: true,
         is_active: true,
+        job_title: true,
+        name: true,
+        company_id: true,
+        employee_id: true,
       },
     });
 
@@ -46,6 +55,22 @@ export class BookmarksService {
       },
       select: {
         job_bookmark_id: true,
+      },
+    });
+
+    await this.notificationsService.createNotification({
+      title: 'Seeker vừa lưu job',
+      message: `Một ứng viên vừa lưu vị trí ${job.job_title || job.name}.`,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      type: NotificationType.JOB_BOOKMARKED,
+      role: 'EMPLOYEE',
+      receiverId: job.employee_id,
+      senderId: seekerId,
+      metadata: {
+        bookmarkId: created.job_bookmark_id,
+        jobId: job.job_post_id,
+        companyId: job.company_id,
+        seekerId,
       },
     });
 

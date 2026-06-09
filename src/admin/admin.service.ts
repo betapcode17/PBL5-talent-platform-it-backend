@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client.js';
+import { NotificationType, Prisma } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
 import { GetAdminCompaniesQueryDto } from './dto/get-admin-companies.query.dto.js';
 import { GetAdminStatisticsQueryDto } from './dto/get-admin-statistics.query.dto.js';
@@ -28,6 +29,7 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailsService: MailsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async getStatistics(query: GetAdminStatisticsQueryDto) {
@@ -841,6 +843,19 @@ export class AdminService {
       password: rawPassword,
     });
 
+    await this.notificationsService.createNotification({
+      title: 'Tài khoản nhà tuyển dụng đã được tạo',
+      message: `Công ty ${result.company.company_name} đã được phê duyệt và tạo tài khoản tuyển dụng.`,
+      type: NotificationType.EMPLOYER_REGISTRATION_APPROVED,
+      role: 'EMPLOYEE',
+      receiverId: result.user.user_id,
+      metadata: {
+        requestId: result.request.request_id,
+        companyId: result.company.company_id,
+        loginEmail: result.loginEmail,
+      },
+    });
+
     return {
       message: 'Employer registration request approved',
       requestId: result.request.request_id,
@@ -1036,7 +1051,21 @@ export class AdminService {
       select: {
         job_post_id: true,
         job_title: true,
+        company_id: true,
+        employee_id: true,
         is_active: true,
+      },
+    });
+
+    await this.notificationsService.createNotification({
+      title: 'Job đã được admin duyệt',
+      message: `Bài đăng ${job.job_title} đã được kích hoạt bởi admin.`,
+      type: NotificationType.JOB_APPROVED,
+      role: 'EMPLOYEE',
+      receiverId: job.employee_id,
+      metadata: {
+        jobId: job.job_post_id,
+        companyId: job.company_id,
       },
     });
 
@@ -1053,7 +1082,21 @@ export class AdminService {
       select: {
         job_post_id: true,
         job_title: true,
+        company_id: true,
+        employee_id: true,
         is_active: true,
+      },
+    });
+
+    await this.notificationsService.createNotification({
+      title: 'Job đã bị admin từ chối hoặc tắt',
+      message: `Bài đăng ${job.job_title} đã bị admin vô hiệu hóa.`,
+      type: NotificationType.JOB_REJECTED,
+      role: 'EMPLOYEE',
+      receiverId: job.employee_id,
+      metadata: {
+        jobId: job.job_post_id,
+        companyId: job.company_id,
       },
     });
 

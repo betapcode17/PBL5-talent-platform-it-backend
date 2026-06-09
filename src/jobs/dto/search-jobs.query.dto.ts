@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class SearchJobsQueryDto {
   @ApiPropertyOptional({ example: 'frontend', description: 'Tu khoa tim kiem' })
@@ -55,4 +55,27 @@ export class SearchJobsQueryDto {
   @Max(100)
   @IsOptional()
   limit: number = 20;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Neu la seeker dang dang nhap, loai bo cac job da ung tuyen',
+  })
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    if (value === true || value === 'true') {
+      return true;
+    }
+
+    if (value === false || value === 'false') {
+      return false;
+    }
+
+    return value;
+  })
+  @IsBoolean()
+  @IsOptional()
+  excludeApplied?: boolean;
 }

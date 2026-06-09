@@ -1,0 +1,96 @@
+2ac0935a1f3e134e10605078d6845f30
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g;
+import { ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer, } from '@nestjs/websockets';
+import { UseGuards } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Socket } from 'socket.io';
+import { WebSocketGuard } from '../websocket/websocket.guard.js';
+import { JoinNotificationRoomDto } from './dto/join-notification-room.dto.js';
+import { NotificationEvent } from './enums/notification-event.enum.js';
+import { NotificationsRealtimeService } from './notifications.realtime.service.js';
+import { NotificationsService } from './notifications.service.js';
+let NotificationsGateway = class NotificationsGateway {
+    jwtService;
+    realtime;
+    notificationsService;
+    server;
+    constructor(jwtService, realtime, notificationsService) {
+        this.jwtService = jwtService;
+        this.realtime = realtime;
+        this.notificationsService = notificationsService;
+    }
+    afterInit(server) {
+        this.realtime.attachServer(server);
+    }
+    handleConnection(client) {
+        const user = WebSocketGuard.validateToken(client, this.jwtService);
+        client.data.user = user;
+        client.data.userId = user.sub;
+        client.data.role = user.role;
+        void client.join(this.realtime.getUserRoom(user.sub));
+        void client.join(this.realtime.getRoleRoom(user.role));
+    }
+    handleDisconnect(_client) { }
+    async handleJoin(client, body) {
+        const role = (body.role ?? client.data.role);
+        void client.join(this.realtime.getUserRoom(client.data.userId));
+        void client.join(this.realtime.getRoleRoom(role));
+        return {
+            event: NotificationEvent.JOINED,
+            userId: client.data.userId,
+            role,
+        };
+    }
+    async handleMarkRead(client, body) {
+        return this.notificationsService.markAsRead({
+            sub: client.data.userId,
+            role: client.data.role,
+            email: '',
+        }, body.notificationId);
+    }
+};
+__decorate([
+    WebSocketServer(),
+    __metadata("design:type", Object)
+], NotificationsGateway.prototype, "server", void 0);
+__decorate([
+    SubscribeMessage('notifications:join'),
+    __param(0, ConnectedSocket()),
+    __param(1, MessageBody()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_e = typeof Socket !== "undefined" && Socket) === "function" ? _e : Object, typeof (_f = typeof JoinNotificationRoomDto !== "undefined" && JoinNotificationRoomDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", Promise)
+], NotificationsGateway.prototype, "handleJoin", null);
+__decorate([
+    SubscribeMessage('notifications:mark-read'),
+    __param(0, ConnectedSocket()),
+    __param(1, MessageBody()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_g = typeof Socket !== "undefined" && Socket) === "function" ? _g : Object, Object]),
+    __metadata("design:returntype", Promise)
+], NotificationsGateway.prototype, "handleMarkRead", null);
+NotificationsGateway = __decorate([
+    WebSocketGateway({
+        cors: {
+            origin: ['http://localhost:5173', 'http://localhost:3000'],
+            credentials: true,
+        },
+        namespace: '/notifications',
+    }),
+    UseGuards(WebSocketGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof JwtService !== "undefined" && JwtService) === "function" ? _a : Object, typeof (_b = typeof NotificationsRealtimeService !== "undefined" && NotificationsRealtimeService) === "function" ? _b : Object, typeof (_c = typeof NotificationsService !== "undefined" && NotificationsService) === "function" ? _c : Object])
+], NotificationsGateway);
+export { NotificationsGateway };
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRTpcXEhPQ0tJNlxcUEJMNVxcYmFja2VuZFxcc3JjXFxub3RpZmljYXRpb25zXFxub3RpZmljYXRpb25zLmdhdGV3YXkudHMiLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7OztBQUFBLE9BQU8sRUFDTCxlQUFlLEVBQ2YsV0FBVyxFQUdYLGdCQUFnQixFQUNoQixnQkFBZ0IsRUFDaEIsZUFBZSxHQUNoQixNQUFNLG9CQUFvQixDQUFDO0FBQzVCLE9BQU8sRUFBRSxTQUFTLEVBQUUsTUFBTSxnQkFBZ0IsQ0FBQztBQUMzQyxPQUFPLEVBQUUsVUFBVSxFQUFFLE1BQU0sYUFBYSxDQUFDO0FBQ3pDLE9BQU8sRUFBVSxNQUFNLEVBQUUsTUFBTSxXQUFXLENBQUM7QUFFM0MsT0FBTyxFQUFFLGNBQWMsRUFBRSxNQUFNLGlDQUFpQyxDQUFDO0FBQ2pFLE9BQU8sRUFBRSx1QkFBdUIsRUFBRSxNQUFNLHFDQUFxQyxDQUFDO0FBQzlFLE9BQU8sRUFBRSxpQkFBaUIsRUFBRSxNQUFNLG9DQUFvQyxDQUFDO0FBQ3ZFLE9BQU8sRUFBRSw0QkFBNEIsRUFBRSxNQUFNLHFDQUFxQyxDQUFDO0FBQ25GLE9BQU8sRUFBRSxvQkFBb0IsRUFBRSxNQUFNLDRCQUE0QixDQUFDO0FBZ0IzRCxJQUFNLG9CQUFvQixHQUExQixNQUFNLG9CQUFvQjtJQU9aO0lBQ0E7SUFDQTtJQUxuQixNQUFNLENBQXFCO0lBRTNCLFlBQ21CLFVBQXNCLEVBQ3RCLFFBQXNDLEVBQ3RDLG9CQUEwQztRQUYxQyxlQUFVLEdBQVYsVUFBVSxDQUFZO1FBQ3RCLGFBQVEsR0FBUixRQUFRLENBQThCO1FBQ3RDLHlCQUFvQixHQUFwQixvQkFBb0IsQ0FBc0I7SUFDMUQsQ0FBQztJQUVKLFNBQVMsQ0FBQyxNQUFjO1FBQ3RCLElBQUksQ0FBQyxRQUFRLENBQUMsWUFBWSxDQUFDLE1BQU0sQ0FBQyxDQUFDO0lBQ3JDLENBQUM7SUFFRCxnQkFBZ0IsQ0FBQyxNQUFjO1FBQzdCLE1BQU0sSUFBSSxHQUFHLGNBQWMsQ0FBQyxhQUFhLENBQUMsTUFBTSxFQUFFLElBQUksQ0FBQyxVQUFVLENBQWUsQ0FBQztRQUNqRixNQUFNLENBQUMsSUFBSSxDQUFDLElBQUksR0FBRyxJQUFJLENBQUM7UUFDeEIsTUFBTSxDQUFDLElBQUksQ0FBQyxNQUFNLEdBQUcsSUFBSSxDQUFDLEdBQUcsQ0FBQztRQUM5QixNQUFNLENBQUMsSUFBSSxDQUFDLElBQUksR0FBRyxJQUFJLENBQUMsSUFBSSxDQUFDO1FBQzdCLEtBQUssTUFBTSxDQUFDLElBQUksQ0FBQyxJQUFJLENBQUMsUUFBUSxDQUFDLFdBQVcsQ0FBQyxJQUFJLENBQUMsR0FBRyxDQUFDLENBQUMsQ0FBQztRQUN0RCxLQUFLLE1BQU0sQ0FBQyxJQUFJLENBQUMsSUFBSSxDQUFDLFFBQVEsQ0FBQyxXQUFXLENBQUMsSUFBSSxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUM7SUFDekQsQ0FBQztJQUVELGdCQUFnQixDQUFDLE9BQWUsSUFBRyxDQUFDO0lBRzlCLEFBQU4sS0FBSyxDQUFDLFVBQVUsQ0FDSyxNQUFjLEVBQ2xCLElBQTZCO1FBRTVDLE1BQU0sSUFBSSxHQUFHLENBQUMsSUFBSSxDQUFDLElBQUksSUFBSSxNQUFNLENBQUMsSUFBSSxDQUFDLElBQUksQ0FBcUIsQ0FBQztRQUNqRSxLQUFLLE1BQU0sQ0FBQyxJQUFJLENBQUMsSUFBSSxDQUFDLFFBQVEsQ0FBQyxXQUFXLENBQUMsTUFBTSxDQUFDLElBQUksQ0FBQyxNQUFnQixDQUFDLENBQUMsQ0FBQztRQUMxRSxLQUFLLE1BQU0sQ0FBQyxJQUFJLENBQUMsSUFBSSxDQUFDLFFBQVEsQ0FBQyxXQUFXLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQztRQUVsRCxPQUFPO1lBQ0wsS0FBSyxFQUFFLGlCQUFpQixDQUFDLE1BQU07WUFDL0IsTUFBTSxFQUFFLE1BQU0sQ0FBQyxJQUFJLENBQUMsTUFBTTtZQUMxQixJQUFJO1NBQ0wsQ0FBQztJQUNKLENBQUM7SUFHSyxBQUFOLEtBQUssQ0FBQyxjQUFjLENBQ0MsTUFBYyxFQUNsQixJQUFnQztRQUUvQyxPQUFPLElBQUksQ0FBQyxvQkFBb0IsQ0FBQyxVQUFVLENBQ3pDO1lBQ0UsR0FBRyxFQUFFLE1BQU0sQ0FBQyxJQUFJLENBQUMsTUFBZ0I7WUFDakMsSUFBSSxFQUFFLE1BQU0sQ0FBQyxJQUFJLENBQUMsSUFBd0I7WUFDMUMsS0FBSyxFQUFFLEVBQUU7U0FDVixFQUNELElBQUksQ0FBQyxjQUFjLENBQ3BCLENBQUM7SUFDSixDQUFDO0NBQ0YsQ0FBQTtBQXJEQztJQURDLGVBQWUsRUFBRTs7b0RBQ1M7QUF3QnJCO0lBREwsZ0JBQWdCLENBQUMsb0JBQW9CLENBQUM7SUFFcEMsV0FBQSxlQUFlLEVBQUUsQ0FBQTtJQUNqQixXQUFBLFdBQVcsRUFBRSxDQUFBOzt5REFEYSxNQUFNLG9CQUFOLE1BQU0sb0RBQ1osdUJBQXVCLG9CQUF2Qix1QkFBdUI7O3NEQVc3QztBQUdLO0lBREwsZ0JBQWdCLENBQUMseUJBQXlCLENBQUM7SUFFekMsV0FBQSxlQUFlLEVBQUUsQ0FBQTtJQUNqQixXQUFBLFdBQVcsRUFBRSxDQUFBOzt5REFEYSxNQUFNLG9CQUFOLE1BQU07OzBEQVdsQztBQXhEVSxvQkFBb0I7SUFSaEMsZ0JBQWdCLENBQUM7UUFDaEIsSUFBSSxFQUFFO1lBQ0osTUFBTSxFQUFFLENBQUMsdUJBQXVCLEVBQUUsdUJBQXVCLENBQUM7WUFDMUQsV0FBVyxFQUFFLElBQUk7U0FDbEI7UUFDRCxTQUFTLEVBQUUsZ0JBQWdCO0tBQzVCLENBQUM7SUFDRCxTQUFTLENBQUMsY0FBYyxDQUFDO3lEQVFPLFVBQVUsb0JBQVYsVUFBVSxvREFDWiw0QkFBNEIsb0JBQTVCLDRCQUE0QixvREFDaEIsb0JBQW9CLG9CQUFwQixvQkFBb0I7R0FUbEQsb0JBQW9CLENBeURoQyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJFOlxcSE9DS0k2XFxQQkw1XFxiYWNrZW5kXFxzcmNcXG5vdGlmaWNhdGlvbnNcXG5vdGlmaWNhdGlvbnMuZ2F0ZXdheS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQge1xuICBDb25uZWN0ZWRTb2NrZXQsXG4gIE1lc3NhZ2VCb2R5LFxuICBPbkdhdGV3YXlDb25uZWN0aW9uLFxuICBPbkdhdGV3YXlEaXNjb25uZWN0LFxuICBTdWJzY3JpYmVNZXNzYWdlLFxuICBXZWJTb2NrZXRHYXRld2F5LFxuICBXZWJTb2NrZXRTZXJ2ZXIsXG59IGZyb20gJ0BuZXN0anMvd2Vic29ja2V0cyc7XG5pbXBvcnQgeyBVc2VHdWFyZHMgfSBmcm9tICdAbmVzdGpzL2NvbW1vbic7XG5pbXBvcnQgeyBKd3RTZXJ2aWNlIH0gZnJvbSAnQG5lc3Rqcy9qd3QnO1xuaW1wb3J0IHsgU2VydmVyLCBTb2NrZXQgfSBmcm9tICdzb2NrZXQuaW8nO1xuaW1wb3J0IHsgTm90aWZpY2F0aW9uUm9sZSB9IGZyb20gJy4uL2dlbmVyYXRlZC9wcmlzbWEvY2xpZW50LmpzJztcbmltcG9ydCB7IFdlYlNvY2tldEd1YXJkIH0gZnJvbSAnLi4vd2Vic29ja2V0L3dlYnNvY2tldC5ndWFyZC5qcyc7XG5pbXBvcnQgeyBKb2luTm90aWZpY2F0aW9uUm9vbUR0byB9IGZyb20gJy4vZHRvL2pvaW4tbm90aWZpY2F0aW9uLXJvb20uZHRvLmpzJztcbmltcG9ydCB7IE5vdGlmaWNhdGlvbkV2ZW50IH0gZnJvbSAnLi9lbnVtcy9ub3RpZmljYXRpb24tZXZlbnQuZW51bS5qcyc7XG5pbXBvcnQgeyBOb3RpZmljYXRpb25zUmVhbHRpbWVTZXJ2aWNlIH0gZnJvbSAnLi9ub3RpZmljYXRpb25zLnJlYWx0aW1lLnNlcnZpY2UuanMnO1xuaW1wb3J0IHsgTm90aWZpY2F0aW9uc1NlcnZpY2UgfSBmcm9tICcuL25vdGlmaWNhdGlvbnMuc2VydmljZS5qcyc7XG5cbnR5cGUgU29ja2V0VXNlciA9IHtcbiAgc3ViOiBudW1iZXI7XG4gIHJvbGU6IE5vdGlmaWNhdGlvblJvbGU7XG4gIGVtYWlsOiBzdHJpbmc7XG59O1xuXG5AV2ViU29ja2V0R2F0ZXdheSh7XG4gIGNvcnM6IHtcbiAgICBvcmlnaW46IFsnaHR0cDovL2xvY2FsaG9zdDo1MTczJywgJ2h0dHA6Ly9sb2NhbGhvc3Q6MzAwMCddLFxuICAgIGNyZWRlbnRpYWxzOiB0cnVlLFxuICB9LFxuICBuYW1lc3BhY2U6ICcvbm90aWZpY2F0aW9ucycsXG59KVxuQFVzZUd1YXJkcyhXZWJTb2NrZXRHdWFyZClcbmV4cG9ydCBjbGFzcyBOb3RpZmljYXRpb25zR2F0ZXdheVxuICBpbXBsZW1lbnRzIE9uR2F0ZXdheUNvbm5lY3Rpb24sIE9uR2F0ZXdheURpc2Nvbm5lY3RcbntcbiAgQFdlYlNvY2tldFNlcnZlcigpXG4gIHNlcnZlcjogU2VydmVyIHwgdW5kZWZpbmVkO1xuXG4gIGNvbnN0cnVjdG9yKFxuICAgIHByaXZhdGUgcmVhZG9ubHkgand0U2VydmljZTogSnd0U2VydmljZSxcbiAgICBwcml2YXRlIHJlYWRvbmx5IHJlYWx0aW1lOiBOb3RpZmljYXRpb25zUmVhbHRpbWVTZXJ2aWNlLFxuICAgIHByaXZhdGUgcmVhZG9ubHkgbm90aWZpY2F0aW9uc1NlcnZpY2U6IE5vdGlmaWNhdGlvbnNTZXJ2aWNlLFxuICApIHt9XG5cbiAgYWZ0ZXJJbml0KHNlcnZlcjogU2VydmVyKSB7XG4gICAgdGhpcy5yZWFsdGltZS5hdHRhY2hTZXJ2ZXIoc2VydmVyKTtcbiAgfVxuXG4gIGhhbmRsZUNvbm5lY3Rpb24oY2xpZW50OiBTb2NrZXQpIHtcbiAgICBjb25zdCB1c2VyID0gV2ViU29ja2V0R3VhcmQudmFsaWRhdGVUb2tlbihjbGllbnQsIHRoaXMuand0U2VydmljZSkgYXMgU29ja2V0VXNlcjtcbiAgICBjbGllbnQuZGF0YS51c2VyID0gdXNlcjtcbiAgICBjbGllbnQuZGF0YS51c2VySWQgPSB1c2VyLnN1YjtcbiAgICBjbGllbnQuZGF0YS5yb2xlID0gdXNlci5yb2xlO1xuICAgIHZvaWQgY2xpZW50LmpvaW4odGhpcy5yZWFsdGltZS5nZXRVc2VyUm9vbSh1c2VyLnN1YikpO1xuICAgIHZvaWQgY2xpZW50LmpvaW4odGhpcy5yZWFsdGltZS5nZXRSb2xlUm9vbSh1c2VyLnJvbGUpKTtcbiAgfVxuXG4gIGhhbmRsZURpc2Nvbm5lY3QoX2NsaWVudDogU29ja2V0KSB7fVxuXG4gIEBTdWJzY3JpYmVNZXNzYWdlKCdub3RpZmljYXRpb25zOmpvaW4nKVxuICBhc3luYyBoYW5kbGVKb2luKFxuICAgIEBDb25uZWN0ZWRTb2NrZXQoKSBjbGllbnQ6IFNvY2tldCxcbiAgICBATWVzc2FnZUJvZHkoKSBib2R5OiBKb2luTm90aWZpY2F0aW9uUm9vbUR0byxcbiAgKSB7XG4gICAgY29uc3Qgcm9sZSA9IChib2R5LnJvbGUgPz8gY2xpZW50LmRhdGEucm9sZSkgYXMgTm90aWZpY2F0aW9uUm9sZTtcbiAgICB2b2lkIGNsaWVudC5qb2luKHRoaXMucmVhbHRpbWUuZ2V0VXNlclJvb20oY2xpZW50LmRhdGEudXNlcklkIGFzIG51bWJlcikpO1xuICAgIHZvaWQgY2xpZW50LmpvaW4odGhpcy5yZWFsdGltZS5nZXRSb2xlUm9vbShyb2xlKSk7XG5cbiAgICByZXR1cm4ge1xuICAgICAgZXZlbnQ6IE5vdGlmaWNhdGlvbkV2ZW50LkpPSU5FRCxcbiAgICAgIHVzZXJJZDogY2xpZW50LmRhdGEudXNlcklkLFxuICAgICAgcm9sZSxcbiAgICB9O1xuICB9XG5cbiAgQFN1YnNjcmliZU1lc3NhZ2UoJ25vdGlmaWNhdGlvbnM6bWFyay1yZWFkJylcbiAgYXN5bmMgaGFuZGxlTWFya1JlYWQoXG4gICAgQENvbm5lY3RlZFNvY2tldCgpIGNsaWVudDogU29ja2V0LFxuICAgIEBNZXNzYWdlQm9keSgpIGJvZHk6IHsgbm90aWZpY2F0aW9uSWQ6IG51bWJlciB9LFxuICApIHtcbiAgICByZXR1cm4gdGhpcy5ub3RpZmljYXRpb25zU2VydmljZS5tYXJrQXNSZWFkKFxuICAgICAge1xuICAgICAgICBzdWI6IGNsaWVudC5kYXRhLnVzZXJJZCBhcyBudW1iZXIsXG4gICAgICAgIHJvbGU6IGNsaWVudC5kYXRhLnJvbGUgYXMgTm90aWZpY2F0aW9uUm9sZSxcbiAgICAgICAgZW1haWw6ICcnLFxuICAgICAgfSxcbiAgICAgIGJvZHkubm90aWZpY2F0aW9uSWQsXG4gICAgKTtcbiAgfVxufVxuIl0sInZlcnNpb24iOjN9

@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { ReqUser } from '../common/decorators/req-user.decorator.js';
 import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
+import { OptionalJwtAuthGuard } from '../jwt/optional-jwt-auth.guard.js';
 import { CreateJobDto } from './dto/create-job.dto.js';
 import { GetCompanyJobsQueryDto } from './dto/get-company-jobs.query.dto.js';
 import { SearchJobsQueryDto } from './dto/search-jobs.query.dto.js';
@@ -75,9 +76,19 @@ export class JobsController {
   @ApiQuery({ name: 'salaryMax', required: false, example: '50M' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({
+    name: 'excludeApplied',
+    required: false,
+    example: true,
+    description: 'Neu seeker dang dang nhap, loai bo job da ung tuyen',
+  })
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('search')
-  search(@Query() query: SearchJobsQueryDto) {
-    return this.jobsService.searchJobs(query);
+  search(
+    @ReqUser() user: RequestUser | undefined,
+    @Query() query: SearchJobsQueryDto,
+  ) {
+    return this.jobsService.searchJobs(query, user);
   }
 
   @ApiOperation({ summary: 'Lay toan bo jobs (Auth optional)' })
@@ -89,9 +100,25 @@ export class JobsController {
     example: true,
     description: 'Filter theo trang thai active',
   })
+  @ApiQuery({
+    name: 'excludeApplied',
+    required: false,
+    example: true,
+    description: 'Neu seeker dang dang nhap, loai bo job da ung tuyen',
+  })
+  @UseGuards(OptionalJwtAuthGuard)
   @Get()
-  findAll(@Query() query: GetCompanyJobsQueryDto) {
-    return this.jobsService.getAllJobs(query.page, query.limit, query.active);
+  findAll(
+    @ReqUser() user: RequestUser | undefined,
+    @Query() query: GetCompanyJobsQueryDto,
+  ) {
+    return this.jobsService.getAllJobs(
+      query.page,
+      query.limit,
+      query.active,
+      query.excludeApplied,
+      user,
+    );
   }
 
   @ApiOperation({ summary: 'Lay jobs cua company (tam thoi khong auth)' })

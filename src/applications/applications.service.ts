@@ -9,6 +9,8 @@ import {
 import { extname } from 'node:path';
 import { ApplicationStatus, Prisma } from '../generated/prisma/client.js';
 import { MailsService } from '../mails/mails.service.js';
+import { NotificationType } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
 import { CloudinaryService } from '../upload/cloudinary.service.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
@@ -119,6 +121,7 @@ export class ApplicationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailsService: MailsService,
+    private readonly notificationsService: NotificationsService,
     private readonly cloudinary: CloudinaryService,
   ) {}
 
@@ -296,6 +299,30 @@ export class ApplicationsService {
       }),
       this.prisma.jobPostActivity.count({ where }),
     ]);
+
+    await Promise.all(
+      applications
+        .filter((application) => Boolean(application.cv_url ?? application.Seeker.file_cv))
+        .map((application) =>
+          this.notificationsService.createNotificationIfNotExists(
+            {
+              title: 'Nhà tuyển dụng đã xem CV của bạn',
+              message: `CV của bạn đã được mở trong đợt tuyển ${job.job_title || job.name}.`,
+              type: NotificationType.CV_VIEWED,
+              role: 'SEEKER',
+              receiverId: application.Seeker.seeker_id,
+              senderId: userId,
+              dedupeKey: `cv-viewed:${jobPostId}:${application.Seeker.seeker_id}`,
+              metadata: {
+                applicationId: application.application_id,
+                jobId: jobPostId,
+                companyId: job.company_id,
+              },
+            },
+            12,
+          ),
+        ),
+    );
 
     return {
       applications: applications.map((application) => ({
@@ -742,7 +769,40 @@ export class ApplicationsService {
     );
 
     this.logger.debug(
-      'TODO: tich hop realtime notification cho recruiter khi co notification gateway phu hop',
+      `Recruiter emails dispatched for application #${applicationId}`,
+    );
+
+    const companyEmployees = await this.prisma.employee.findMany({
+      where: {
+        company_id: job.company_id,
+        User: {
+          is: {
+            is_active: true,
+          },
+        },
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+
+    await this.notificationsService.notifyUsers(
+      companyEmployees.map((employee) => ({
+        title: 'Có ứng viên mới ứng tuyển',
+        message: `${seeker.User.full_name || seeker.User.email} vừa ứng tuyển vào vị trí ${
+          job.job_title || job.name
+        }.`,
+        type: NotificationType.APPLICATION_SUBMITTED,
+        role: 'EMPLOYEE',
+        receiverId: employee.employee_id,
+        senderId: seeker.seeker_id,
+        metadata: {
+          applicationId,
+          jobId: job.job_post_id,
+          seekerId: seeker.seeker_id,
+          companyId: job.company_id,
+        },
+      })),
     );
   }
 
@@ -761,9 +821,21 @@ export class ApplicationsService {
       recruiterName: application.JobPost.Employee.User.full_name,
     });
 
-    this.logger.debug(
-      'TODO: phat event realtime application_accepted khi co notification gateway phu hop',
-    );
+    await this.notificationsService.createNotification({
+      title: 'Hồ sơ ứng tuyển đã được duyệt',
+      message: `Công ty ${application.JobPost.Company.company_name} đã chuyển hồ sơ ${
+        application.JobPost.job_title || application.JobPost.name
+      } sang vòng tiếp theo.`,
+      type: NotificationType.APPLICATION_ACCEPTED,
+      role: 'SEEKER',
+      receiverId: application.Seeker.seeker_id,
+      senderId: application.JobPost.employee_id,
+      metadata: {
+        applicationId: application.application_id,
+        jobId: application.job_post_id,
+        companyId: application.JobPost.company_id,
+      },
+    });
   }
 
   private async notifySeekerOnReject(
@@ -785,9 +857,22 @@ export class ApplicationsService {
       reason,
     });
 
-    this.logger.debug(
-      'TODO: phat event realtime application_rejected khi co notification gateway phu hop',
-    );
+    await this.notificationsService.createNotification({
+      title: 'Hồ sơ ứng tuyển bị từ chối',
+      message: `Công ty ${application.JobPost.Company.company_name} đã từ chối hồ sơ ${
+        application.JobPost.job_title || application.JobPost.name
+      }.`,
+      type: NotificationType.APPLICATION_REJECTED,
+      role: 'SEEKER',
+      receiverId: application.Seeker.seeker_id,
+      senderId: application.JobPost.employee_id,
+      metadata: {
+        applicationId: application.application_id,
+        jobId: application.job_post_id,
+        companyId: application.JobPost.company_id,
+        reason,
+      },
+    });
   }
 
   private async safeSendApplicationMail(

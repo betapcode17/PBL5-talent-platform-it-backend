@@ -3,6 +3,7 @@ import { ChatService } from './chat.service.js';
 import { ChatGateway } from './gateway/chat.gateway.js';
 import { JwtModule } from '@nestjs/jwt';
 import { ChatController } from './chat.controller.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ChatController } from './chat.controller.js';
         'default-secret-key-change-in-production',
       signOptions: { expiresIn: '1h' },
     }),
+    NotificationsModule,
   ],
   providers: [ChatService, ChatGateway],
   controllers: [ChatController],

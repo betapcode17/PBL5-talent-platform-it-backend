@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { NotificationType } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
 import { ChatGateway } from '../chat/gateway/chat.gateway.js';
 
@@ -11,6 +13,7 @@ export class MessageService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly chatGateway: ChatGateway,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async sendMessage(
@@ -61,6 +64,12 @@ export class MessageService {
     } catch (err) {
       console.error('Failed to broadcast message via WebSocket:', err);
       // Don't fail the request if WebSocket broadcast fails, message is still saved
+    }
+
+    try {
+      await this.dispatchChatNotification(chat, message);
+    } catch (err) {
+      console.error('Failed to dispatch notification from chat message:', err);
     }
 
     return message;
@@ -117,5 +126,64 @@ export class MessageService {
       where: { message_id: messageId },
       data: { content: newContent.trim() },
     });
+  }
+
+  private async dispatchChatNotification(
+    chat: { chat_id: number; seeker_id: number; company_id: number },
+    message: {
+      message_id: number;
+      content: string;
+      sender_type: 'SEEKER' | 'EMPLOYEE';
+      sender_id: number;
+    },
+  ) {
+    if (message.sender_type === 'EMPLOYEE') {
+      await this.notificationsService.createNotification({
+        title: 'Công ty đã phản hồi tin nhắn',
+        message: message.content.slice(0, 180),
+        type: NotificationType.COMPANY_REPLIED,
+        role: 'SEEKER',
+        receiverId: chat.seeker_id,
+        senderId: message.sender_id,
+        metadata: {
+          chatId: chat.chat_id,
+          companyId: chat.company_id,
+          messageId: message.message_id,
+        },
+      });
+      return;
+    }
+
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        company_id: chat.company_id,
+        User: {
+          is: {
+            is_active: true,
+          },
+        },
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+
+    await this.notificationsService.notifyUsers(
+      employees.map((employee) => ({
+        title: 'Có tin nhắn mới từ seeker',
+        message: message.content.slice(0, 180),
+        type: NotificationType.SEEKER_MESSAGE,
+        role: 'EMPLOYEE',
+        receiverId: employee.employee_id,
+        senderId: chat.seeker_id,
+        dedupeKey: `seeker-message:${chat.chat_id}:${message.message_id}`,
+        metadata: {
+          chatId: chat.chat_id,
+          companyId: chat.company_id,
+          seekerId: chat.seeker_id,
+          messageId: message.message_id,
+        },
+      })),
+    );
   }
 }

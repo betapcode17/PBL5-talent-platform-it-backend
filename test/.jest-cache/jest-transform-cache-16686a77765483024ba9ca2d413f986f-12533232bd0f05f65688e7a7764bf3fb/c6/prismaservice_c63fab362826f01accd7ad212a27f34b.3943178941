@@ -1,0 +1,37 @@
+503115131bf8e2325a967614c5837ca5
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaClient } from './generated/prisma/client.js';
+import { PrismaPg } from '@prisma/adapter-pg';
+let PrismaService = class PrismaService extends PrismaClient {
+    configService;
+    constructor(configService) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        const dbUrl = configService.get('DATABASE_URL');
+        if (!dbUrl) {
+            throw new Error('DATABASE_URL is not defined');
+        }
+        const adapter = new PrismaPg({
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            connectionString: dbUrl,
+        });
+        super({ adapter });
+        this.configService = configService;
+    }
+};
+PrismaService = __decorate([
+    Injectable(),
+    __metadata("design:paramtypes", [typeof (_a = typeof ConfigService !== "undefined" && ConfigService) === "function" ? _a : Object])
+], PrismaService);
+export { PrismaService };
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRTpcXEhPQ0tJNlxcUEJMNVxcYmFja2VuZFxcc3JjXFxwcmlzbWEuc2VydmljZS50cyIsIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7O0FBQUEsT0FBTyxFQUFFLFVBQVUsRUFBRSxNQUFNLGdCQUFnQixDQUFDO0FBQzVDLE9BQU8sRUFBRSxhQUFhLEVBQUUsTUFBTSxnQkFBZ0IsQ0FBQztBQUMvQyxPQUFPLEVBQUUsWUFBWSxFQUFFLE1BQU0sOEJBQThCLENBQUM7QUFDNUQsT0FBTyxFQUFFLFFBQVEsRUFBRSxNQUFNLG9CQUFvQixDQUFDO0FBR3ZDLElBQU0sYUFBYSxHQUFuQixNQUFNLGFBQWMsU0FBUSxZQUFZO0lBQ3pCO0lBQXBCLFlBQW9CLGFBQTRCO1FBQzlDLGtKQUFrSjtRQUNsSixNQUFNLEtBQUssR0FBRyxhQUFhLENBQUMsR0FBRyxDQUFTLGNBQWMsQ0FBQyxDQUFDO1FBRXhELElBQUksQ0FBQyxLQUFLLEVBQUUsQ0FBQztZQUNYLE1BQU0sSUFBSSxLQUFLLENBQUMsNkJBQTZCLENBQUMsQ0FBQztRQUNqRCxDQUFDO1FBRUQsTUFBTSxPQUFPLEdBQUcsSUFBSSxRQUFRLENBQUM7WUFDM0IsbUVBQW1FO1lBQ25FLGdCQUFnQixFQUFFLEtBQUs7U0FDeEIsQ0FBQyxDQUFDO1FBRUgsS0FBSyxDQUFDLEVBQUUsT0FBTyxFQUFFLENBQUMsQ0FBQztRQWJELGtCQUFhLEdBQWIsYUFBYSxDQUFlO0lBY2hELENBQUM7Q0FDRixDQUFBO0FBaEJZLGFBQWE7SUFEekIsVUFBVSxFQUFFO3lEQUV3QixhQUFhLG9CQUFiLGFBQWE7R0FEckMsYUFBYSxDQWdCekIiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiRTpcXEhPQ0tJNlxcUEJMNVxcYmFja2VuZFxcc3JjXFxwcmlzbWEuc2VydmljZS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBJbmplY3RhYmxlIH0gZnJvbSAnQG5lc3Rqcy9jb21tb24nO1xuaW1wb3J0IHsgQ29uZmlnU2VydmljZSB9IGZyb20gJ0BuZXN0anMvY29uZmlnJztcbmltcG9ydCB7IFByaXNtYUNsaWVudCB9IGZyb20gJy4vZ2VuZXJhdGVkL3ByaXNtYS9jbGllbnQuanMnO1xuaW1wb3J0IHsgUHJpc21hUGcgfSBmcm9tICdAcHJpc21hL2FkYXB0ZXItcGcnO1xuXG5ASW5qZWN0YWJsZSgpXG5leHBvcnQgY2xhc3MgUHJpc21hU2VydmljZSBleHRlbmRzIFByaXNtYUNsaWVudCB7XG4gIGNvbnN0cnVjdG9yKHByaXZhdGUgY29uZmlnU2VydmljZTogQ29uZmlnU2VydmljZSkge1xuICAgIC8vIGVzbGludC1kaXNhYmxlLW5leHQtbGluZSBAdHlwZXNjcmlwdC1lc2xpbnQvbm8tdW5zYWZlLWFzc2lnbm1lbnQsIEB0eXBlc2NyaXB0LWVzbGludC9uby11bnNhZmUtY2FsbCwgQHR5cGVzY3JpcHQtZXNsaW50L25vLXVuc2FmZS1tZW1iZXItYWNjZXNzXG4gICAgY29uc3QgZGJVcmwgPSBjb25maWdTZXJ2aWNlLmdldDxzdHJpbmc+KCdEQVRBQkFTRV9VUkwnKTtcblxuICAgIGlmICghZGJVcmwpIHtcbiAgICAgIHRocm93IG5ldyBFcnJvcignREFUQUJBU0VfVVJMIGlzIG5vdCBkZWZpbmVkJyk7XG4gICAgfVxuXG4gICAgY29uc3QgYWRhcHRlciA9IG5ldyBQcmlzbWFQZyh7XG4gICAgICAvLyBlc2xpbnQtZGlzYWJsZS1uZXh0LWxpbmUgQHR5cGVzY3JpcHQtZXNsaW50L25vLXVuc2FmZS1hc3NpZ25tZW50XG4gICAgICBjb25uZWN0aW9uU3RyaW5nOiBkYlVybCxcbiAgICB9KTtcblxuICAgIHN1cGVyKHsgYWRhcHRlciB9KTtcbiAgfVxufVxuIl0sInZlcnNpb24iOjN9

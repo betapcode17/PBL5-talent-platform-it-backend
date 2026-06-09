@@ -1,0 +1,24 @@
+45ca76f2f97827c1c03a418ecaad98b6
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsOptional } from 'class-validator';
+import { NotificationRole } from '../../generated/prisma/client.js';
+export class JoinNotificationRoomDto {
+    role;
+}
+__decorate([
+    ApiPropertyOptional({ enum: NotificationRole }),
+    IsOptional(),
+    IsEnum(NotificationRole),
+    __metadata("design:type", typeof (_a = typeof NotificationRole !== "undefined" && NotificationRole) === "function" ? _a : Object)
+], JoinNotificationRoomDto.prototype, "role", void 0);
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRTpcXEhPQ0tJNlxcUEJMNVxcYmFja2VuZFxcc3JjXFxub3RpZmljYXRpb25zXFxkdG9cXGpvaW4tbm90aWZpY2F0aW9uLXJvb20uZHRvLnRzIiwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7QUFBQSxPQUFPLEVBQUUsbUJBQW1CLEVBQUUsTUFBTSxpQkFBaUIsQ0FBQztBQUN0RCxPQUFPLEVBQUUsTUFBTSxFQUFFLFVBQVUsRUFBRSxNQUFNLGlCQUFpQixDQUFDO0FBQ3JELE9BQU8sRUFBRSxnQkFBZ0IsRUFBRSxNQUFNLGtDQUFrQyxDQUFDO0FBRXBFLE1BQU0sT0FBTyx1QkFBdUI7SUFJbEMsSUFBSSxDQUFvQjtDQUN6QjtBQURDO0lBSEMsbUJBQW1CLENBQUMsRUFBRSxJQUFJLEVBQUUsZ0JBQWdCLEVBQUUsQ0FBQztJQUMvQyxVQUFVLEVBQUU7SUFDWixNQUFNLENBQUMsZ0JBQWdCLENBQUM7a0RBQ2xCLGdCQUFnQixvQkFBaEIsZ0JBQWdCO3FEQUFDIiwibmFtZXMiOltdLCJzb3VyY2VzIjpbIkU6XFxIT0NLSTZcXFBCTDVcXGJhY2tlbmRcXHNyY1xcbm90aWZpY2F0aW9uc1xcZHRvXFxqb2luLW5vdGlmaWNhdGlvbi1yb29tLmR0by50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBBcGlQcm9wZXJ0eU9wdGlvbmFsIH0gZnJvbSAnQG5lc3Rqcy9zd2FnZ2VyJztcbmltcG9ydCB7IElzRW51bSwgSXNPcHRpb25hbCB9IGZyb20gJ2NsYXNzLXZhbGlkYXRvcic7XG5pbXBvcnQgeyBOb3RpZmljYXRpb25Sb2xlIH0gZnJvbSAnLi4vLi4vZ2VuZXJhdGVkL3ByaXNtYS9jbGllbnQuanMnO1xuXG5leHBvcnQgY2xhc3MgSm9pbk5vdGlmaWNhdGlvblJvb21EdG8ge1xuICBAQXBpUHJvcGVydHlPcHRpb25hbCh7IGVudW06IE5vdGlmaWNhdGlvblJvbGUgfSlcbiAgQElzT3B0aW9uYWwoKVxuICBASXNFbnVtKE5vdGlmaWNhdGlvblJvbGUpXG4gIHJvbGU/OiBOb3RpZmljYXRpb25Sb2xlO1xufVxuIl0sInZlcnNpb24iOjN9

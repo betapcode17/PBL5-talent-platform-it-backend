@@ -1,0 +1,11 @@
+2f0d1de97ff29c55ebac6f669698544e
+export var NotificationEvent;
+(function (NotificationEvent) {
+    NotificationEvent["NEW"] = "notification:new";
+    NotificationEvent["READ"] = "notification:read";
+    NotificationEvent["ALL_READ"] = "notification:all-read";
+    NotificationEvent["DELETED"] = "notification:deleted";
+    NotificationEvent["UNREAD_COUNT"] = "notification:unread-count";
+    NotificationEvent["JOINED"] = "notifications:joined";
+})(NotificationEvent || (NotificationEvent = {}));
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRTpcXEhPQ0tJNlxcUEJMNVxcYmFja2VuZFxcc3JjXFxub3RpZmljYXRpb25zXFxlbnVtc1xcbm90aWZpY2F0aW9uLWV2ZW50LmVudW0udHMiLCJtYXBwaW5ncyI6IkFBQUEsTUFBTSxDQUFOLElBQVksaUJBT1g7QUFQRCxXQUFZLGlCQUFpQjtJQUMzQiw2Q0FBd0IsQ0FBQTtJQUN4QiwrQ0FBMEIsQ0FBQTtJQUMxQix1REFBa0MsQ0FBQTtJQUNsQyxxREFBZ0MsQ0FBQTtJQUNoQywrREFBMEMsQ0FBQTtJQUMxQyxvREFBK0IsQ0FBQTtBQUNqQyxDQUFDLEVBUFcsaUJBQWlCLEtBQWpCLGlCQUFpQixRQU81QiIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJFOlxcSE9DS0k2XFxQQkw1XFxiYWNrZW5kXFxzcmNcXG5vdGlmaWNhdGlvbnNcXGVudW1zXFxub3RpZmljYXRpb24tZXZlbnQuZW51bS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJleHBvcnQgZW51bSBOb3RpZmljYXRpb25FdmVudCB7XG4gIE5FVyA9ICdub3RpZmljYXRpb246bmV3JyxcbiAgUkVBRCA9ICdub3RpZmljYXRpb246cmVhZCcsXG4gIEFMTF9SRUFEID0gJ25vdGlmaWNhdGlvbjphbGwtcmVhZCcsXG4gIERFTEVURUQgPSAnbm90aWZpY2F0aW9uOmRlbGV0ZWQnLFxuICBVTlJFQURfQ09VTlQgPSAnbm90aWZpY2F0aW9uOnVucmVhZC1jb3VudCcsXG4gIEpPSU5FRCA9ICdub3RpZmljYXRpb25zOmpvaW5lZCcsXG59XG4iXSwidmVyc2lvbiI6M30=

@@ -1,0 +1,57 @@
+9454568a15b959671224fb2f9512860c
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b;
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsInt, IsOptional, Max, Min, } from 'class-validator';
+import { NotificationRole, NotificationType, } from '../../generated/prisma/client.js';
+export class GetNotificationsQueryDto {
+    page = 1;
+    limit = 20;
+    type;
+    role;
+    isRead;
+}
+__decorate([
+    ApiPropertyOptional({ example: 1, default: 1 }),
+    Transform(({ value }) => Number(value ?? 1)),
+    IsInt(),
+    Min(1),
+    __metadata("design:type", Number)
+], GetNotificationsQueryDto.prototype, "page", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 20, default: 20 }),
+    Transform(({ value }) => Number(value ?? 20)),
+    IsInt(),
+    Min(1),
+    Max(100),
+    __metadata("design:type", Number)
+], GetNotificationsQueryDto.prototype, "limit", void 0);
+__decorate([
+    ApiPropertyOptional({ enum: NotificationType }),
+    IsOptional(),
+    IsEnum(NotificationType),
+    __metadata("design:type", typeof (_a = typeof NotificationType !== "undefined" && NotificationType) === "function" ? _a : Object)
+], GetNotificationsQueryDto.prototype, "type", void 0);
+__decorate([
+    ApiPropertyOptional({ enum: NotificationRole }),
+    IsOptional(),
+    IsEnum(NotificationRole),
+    __metadata("design:type", typeof (_b = typeof NotificationRole !== "undefined" && NotificationRole) === "function" ? _b : Object)
+], GetNotificationsQueryDto.prototype, "role", void 0);
+__decorate([
+    ApiPropertyOptional({ example: false }),
+    IsOptional(),
+    Transform(({ value }) => value === undefined ? undefined : value === true || value === 'true'),
+    IsBoolean(),
+    __metadata("design:type", Boolean)
+], GetNotificationsQueryDto.prototype, "isRead", void 0);
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRTpcXEhPQ0tJNlxcUEJMNVxcYmFja2VuZFxcc3JjXFxub3RpZmljYXRpb25zXFxkdG9cXGdldC1ub3RpZmljYXRpb25zLnF1ZXJ5LmR0by50cyIsIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7O0FBQUEsT0FBTyxFQUFFLG1CQUFtQixFQUFFLE1BQU0saUJBQWlCLENBQUM7QUFDdEQsT0FBTyxFQUFFLFNBQVMsRUFBRSxNQUFNLG1CQUFtQixDQUFDO0FBQzlDLE9BQU8sRUFDTCxTQUFTLEVBQ1QsTUFBTSxFQUNOLEtBQUssRUFDTCxVQUFVLEVBQ1YsR0FBRyxFQUNILEdBQUcsR0FDSixNQUFNLGlCQUFpQixDQUFDO0FBQ3pCLE9BQU8sRUFDTCxnQkFBZ0IsRUFDaEIsZ0JBQWdCLEdBQ2pCLE1BQU0sa0NBQWtDLENBQUM7QUFFMUMsTUFBTSxPQUFPLHdCQUF3QjtJQUtuQyxJQUFJLEdBQVcsQ0FBQyxDQUFDO0lBT2pCLEtBQUssR0FBVyxFQUFFLENBQUM7SUFLbkIsSUFBSSxDQUFvQjtJQUt4QixJQUFJLENBQW9CO0lBUXhCLE1BQU0sQ0FBVztDQUNsQjtBQTFCQztJQUpDLG1CQUFtQixDQUFDLEVBQUUsT0FBTyxFQUFFLENBQUMsRUFBRSxPQUFPLEVBQUUsQ0FBQyxFQUFFLENBQUM7SUFDL0MsU0FBUyxDQUFDLENBQUMsRUFBRSxLQUFLLEVBQUUsRUFBRSxFQUFFLENBQUMsTUFBTSxDQUFDLEtBQUssSUFBSSxDQUFDLENBQUMsQ0FBQztJQUM1QyxLQUFLLEVBQUU7SUFDUCxHQUFHLENBQUMsQ0FBQyxDQUFDOztzREFDVTtBQU9qQjtJQUxDLG1CQUFtQixDQUFDLEVBQUUsT0FBTyxFQUFFLEVBQUUsRUFBRSxPQUFPLEVBQUUsRUFBRSxFQUFFLENBQUM7SUFDakQsU0FBUyxDQUFDLENBQUMsRUFBRSxLQUFLLEVBQUUsRUFBRSxFQUFFLENBQUMsTUFBTSxDQUFDLEtBQUssSUFBSSxFQUFFLENBQUMsQ0FBQztJQUM3QyxLQUFLLEVBQUU7SUFDUCxHQUFHLENBQUMsQ0FBQyxDQUFDO0lBQ04sR0FBRyxDQUFDLEdBQUcsQ0FBQzs7dURBQ1U7QUFLbkI7SUFIQyxtQkFBbUIsQ0FBQyxFQUFFLElBQUksRUFBRSxnQkFBZ0IsRUFBRSxDQUFDO0lBQy9DLFVBQVUsRUFBRTtJQUNaLE1BQU0sQ0FBQyxnQkFBZ0IsQ0FBQztrREFDbEIsZ0JBQWdCLG9CQUFoQixnQkFBZ0I7c0RBQUM7QUFLeEI7SUFIQyxtQkFBbUIsQ0FBQyxFQUFFLElBQUksRUFBRSxnQkFBZ0IsRUFBRSxDQUFDO0lBQy9DLFVBQVUsRUFBRTtJQUNaLE1BQU0sQ0FBQyxnQkFBZ0IsQ0FBQztrREFDbEIsZ0JBQWdCLG9CQUFoQixnQkFBZ0I7c0RBQUM7QUFReEI7SUFOQyxtQkFBbUIsQ0FBQyxFQUFFLE9BQU8sRUFBRSxLQUFLLEVBQUUsQ0FBQztJQUN2QyxVQUFVLEVBQUU7SUFDWixTQUFTLENBQUMsQ0FBQyxFQUFFLEtBQUssRUFBRSxFQUFFLEVBQUUsQ0FDdkIsS0FBSyxLQUFLLFNBQVMsQ0FBQyxDQUFDLENBQUMsU0FBUyxDQUFDLENBQUMsQ0FBQyxLQUFLLEtBQUssSUFBSSxJQUFJLEtBQUssS0FBSyxNQUFNLENBQ3JFO0lBQ0EsU0FBUyxFQUFFOzt3REFDSyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJFOlxcSE9DS0k2XFxQQkw1XFxiYWNrZW5kXFxzcmNcXG5vdGlmaWNhdGlvbnNcXGR0b1xcZ2V0LW5vdGlmaWNhdGlvbnMucXVlcnkuZHRvLnRzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IEFwaVByb3BlcnR5T3B0aW9uYWwgfSBmcm9tICdAbmVzdGpzL3N3YWdnZXInO1xuaW1wb3J0IHsgVHJhbnNmb3JtIH0gZnJvbSAnY2xhc3MtdHJhbnNmb3JtZXInO1xuaW1wb3J0IHtcbiAgSXNCb29sZWFuLFxuICBJc0VudW0sXG4gIElzSW50LFxuICBJc09wdGlvbmFsLFxuICBNYXgsXG4gIE1pbixcbn0gZnJvbSAnY2xhc3MtdmFsaWRhdG9yJztcbmltcG9ydCB7XG4gIE5vdGlmaWNhdGlvblJvbGUsXG4gIE5vdGlmaWNhdGlvblR5cGUsXG59IGZyb20gJy4uLy4uL2dlbmVyYXRlZC9wcmlzbWEvY2xpZW50LmpzJztcblxuZXhwb3J0IGNsYXNzIEdldE5vdGlmaWNhdGlvbnNRdWVyeUR0byB7XG4gIEBBcGlQcm9wZXJ0eU9wdGlvbmFsKHsgZXhhbXBsZTogMSwgZGVmYXVsdDogMSB9KVxuICBAVHJhbnNmb3JtKCh7IHZhbHVlIH0pID0+IE51bWJlcih2YWx1ZSA/PyAxKSlcbiAgQElzSW50KClcbiAgQE1pbigxKVxuICBwYWdlOiBudW1iZXIgPSAxO1xuXG4gIEBBcGlQcm9wZXJ0eU9wdGlvbmFsKHsgZXhhbXBsZTogMjAsIGRlZmF1bHQ6IDIwIH0pXG4gIEBUcmFuc2Zvcm0oKHsgdmFsdWUgfSkgPT4gTnVtYmVyKHZhbHVlID8/IDIwKSlcbiAgQElzSW50KClcbiAgQE1pbigxKVxuICBATWF4KDEwMClcbiAgbGltaXQ6IG51bWJlciA9IDIwO1xuXG4gIEBBcGlQcm9wZXJ0eU9wdGlvbmFsKHsgZW51bTogTm90aWZpY2F0aW9uVHlwZSB9KVxuICBASXNPcHRpb25hbCgpXG4gIEBJc0VudW0oTm90aWZpY2F0aW9uVHlwZSlcbiAgdHlwZT86IE5vdGlmaWNhdGlvblR5cGU7XG5cbiAgQEFwaVByb3BlcnR5T3B0aW9uYWwoeyBlbnVtOiBOb3RpZmljYXRpb25Sb2xlIH0pXG4gIEBJc09wdGlvbmFsKClcbiAgQElzRW51bShOb3RpZmljYXRpb25Sb2xlKVxuICByb2xlPzogTm90aWZpY2F0aW9uUm9sZTtcblxuICBAQXBpUHJvcGVydHlPcHRpb25hbCh7IGV4YW1wbGU6IGZhbHNlIH0pXG4gIEBJc09wdGlvbmFsKClcbiAgQFRyYW5zZm9ybSgoeyB2YWx1ZSB9KSA9PlxuICAgIHZhbHVlID09PSB1bmRlZmluZWQgPyB1bmRlZmluZWQgOiB2YWx1ZSA9PT0gdHJ1ZSB8fCB2YWx1ZSA9PT0gJ3RydWUnLFxuICApXG4gIEBJc0Jvb2xlYW4oKVxuICBpc1JlYWQ/OiBib29sZWFuO1xufVxuIl0sInZlcnNpb24iOjN9

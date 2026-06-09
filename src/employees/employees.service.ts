@@ -7,6 +7,8 @@ import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
 import { PrismaService } from '../prisma.service.js';
 import { MailsService } from '../mails/mails.service.js';
+import { NotificationType } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 
@@ -15,6 +17,7 @@ export class EmployeesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailsService: MailsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateEmployeeDto) {
@@ -148,6 +151,7 @@ export class EmployeesService {
     sevenDaysAgo.setDate(now.getDate() - 7);
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);
+    await this.dispatchExpiringJobNotifications(employee.employee_id, companyId);
 
     const [
       openJobsCount,
@@ -407,6 +411,7 @@ export class EmployeesService {
 
   async getEmployerJobs(userId: number, page = 1, limit = 10) {
     const employee = await this.getEmployeeContext(userId);
+    await this.dispatchExpiringJobNotifications(employee.employee_id, employee.company_id);
 
     const [jobs, total] = await Promise.all([
       this.prisma.jobPost.findMany({
@@ -687,5 +692,54 @@ export class EmployeesService {
     }
     await this.prisma.employee.delete({ where: { employee_id: id } });
     return { message: 'Deleted successfully' };
+  }
+
+  private async dispatchExpiringJobNotifications(
+    employeeId: number,
+    companyId: number,
+  ) {
+    const now = new Date();
+    const threeDaysLater = new Date(now);
+    threeDaysLater.setDate(now.getDate() + 3);
+
+    const expiringJobs = await this.prisma.jobPost.findMany({
+      where: {
+        company_id: companyId,
+        is_active: true,
+        deadline: {
+          gte: now,
+          lte: threeDaysLater,
+        },
+      },
+      select: {
+        job_post_id: true,
+        job_title: true,
+        name: true,
+        deadline: true,
+      },
+      take: 10,
+    });
+
+    await Promise.all(
+      expiringJobs.map((job) =>
+        this.notificationsService.createNotificationIfNotExists(
+          {
+            title: 'Job sắp hết hạn',
+            message: `Bài đăng ${job.job_title || job.name} sẽ hết hạn vào ${job.deadline?.toLocaleDateString('vi-VN')}.`,
+            type: NotificationType.JOB_EXPIRING,
+            role: 'EMPLOYEE',
+            receiverId: employeeId,
+            senderId: null,
+            dedupeKey: `job-expiring:${job.job_post_id}:${employeeId}`,
+            metadata: {
+              jobId: job.job_post_id,
+              companyId,
+              deadline: job.deadline?.toISOString() ?? null,
+            },
+          },
+          24,
+        ),
+      ),
+    );
   }
 }

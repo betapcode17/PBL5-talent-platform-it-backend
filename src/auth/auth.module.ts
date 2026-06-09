@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { MailsModule } from '../mails/mails.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 
 import { JwtStrategy } from '../jwt/jwt.strategy.js';
 
@@ -16,6 +17,7 @@ import { JwtStrategy } from '../jwt/jwt.strategy.js';
       signOptions: { expiresIn: '1h' },
     }),
     MailsModule,
+    NotificationsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
