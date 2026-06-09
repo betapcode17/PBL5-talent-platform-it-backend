@@ -66,7 +66,7 @@ export class CvService {
   ) {}
 
   async findOne(id: number, user: RequestUser) {
-    this.ensureCanViewCv(id, user);
+    await this.ensureCanViewCv(id, user);
     const seekerId =
       user.role === 'SEEKER' && user.sub === id
         ? await this.getOrCreateMyCv(user.sub)
@@ -766,17 +766,52 @@ export class CvService {
     }
   }
 
-  private ensureCanViewCv(id: number, user: RequestUser) {
+  private async ensureCanViewCv(id: number, user: RequestUser) {
     if (!user) {
       throw new UnauthorizedException('Chua dang nhap');
     }
 
-    if (user.role !== 'SEEKER' && user.role !== 'ADMIN') {
+    if (user.role === 'ADMIN') {
+      return;
+    }
+
+    if (user.role === 'SEEKER') {
+      if (user.sub !== id) {
+        throw new ForbiddenException('Khong co quyen xem CV cua nguoi khac');
+      }
+
+      return;
+    }
+
+    if (user.role !== 'EMPLOYEE') {
       throw new ForbiddenException('Khong co quyen xem CV');
     }
 
-    if (user.role === 'SEEKER' && user.sub !== id) {
-      throw new ForbiddenException('Khong co quyen xem CV cua nguoi khac');
+    const employee = await this.prisma.employee.findUnique({
+      where: { employee_id: user.sub },
+      select: {
+        company_id: true,
+      },
+    });
+
+    if (!employee) {
+      throw new ForbiddenException('Khong co quyen xem CV');
+    }
+
+    const matchedApplication = await this.prisma.jobPostActivity.findFirst({
+      where: {
+        seeker_id: id,
+        JobPost: {
+          company_id: employee.company_id,
+        },
+      },
+      select: {
+        application_id: true,
+      },
+    });
+
+    if (!matchedApplication) {
+      throw new ForbiddenException('Khong co quyen xem CV cua ung vien nay');
     }
   }
 
