@@ -32,16 +32,4 @@ export class CreateApplicationDto {
   )
   @IsString()
   coverLetter?: string;
-
-  @ApiPropertyOptional({
-    example: 'https://res.cloudinary.com/demo/raw/upload/cv.pdf',
-  })
-  @IsOptional()
-  @Transform(({ value }: { value: unknown }): string | undefined =>
-    typeof value === 'string' && value.trim() === ''
-      ? undefined
-      : (value as string | undefined),
-  )
-  @IsString()
-  cvUrl?: string;
 }
