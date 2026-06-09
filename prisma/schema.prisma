@@ -51,8 +51,31 @@ model Company {
   chats                 Chat[]
   CompanyFollow         CompanyFollow[]
   CompanySeekerLike     CompanySeekerLike[]
+  EmployerRegistrationRequest EmployerRegistrationRequest[]
   Employee              Employee[]
   JobPost               JobPost[]
+}
+
+model EmployerRegistrationRequest {
+  request_id             Int                               @id @default(autoincrement())
+  full_name              String
+  email                  String
+  phone                  String
+  role                   String
+  joined_date            DateTime?
+  company_name           String
+  company_address        String
+  company_website_url    String?
+  status                 EmployerRegistrationRequestStatus @default(PENDING)
+  review_note            String?
+  company_id             Int?
+  created_user_id        Int?
+  generated_login_email  String?
+  approved_at            DateTime?
+  rejected_at            DateTime?
+  created_date           DateTime                          @default(now())
+  updated_date           DateTime                          @updatedAt
+  Company                Company?                          @relation(fields: [company_id], references: [company_id])
 }
 
 model CompanyFollow {
@@ -445,4 +468,10 @@ enum WorkType {
 enum SenderType {
   SEEKER
   EMPLOYEE
+}
+
+enum EmployerRegistrationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

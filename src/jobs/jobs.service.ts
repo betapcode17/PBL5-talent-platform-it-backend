@@ -90,8 +90,16 @@ export class JobsService {
   }
 
   async getJobDetail(jobId: number) {
-    const job = await this.prisma.jobPost.findUnique({
-      where: { job_post_id: jobId },
+    const job = await this.prisma.jobPost.findFirst({
+      where: {
+        job_post_id: jobId,
+        is_active: true,
+        Company: {
+          is: {
+            is_active: true,
+          },
+        },
+      },
       include: {
         Company: {
           select: {
@@ -207,6 +215,11 @@ export class JobsService {
 
     const where: Record<string, unknown> = {
       is_active: true,
+      Company: {
+        is: {
+          is_active: true,
+        },
+      },
     };
 
     if (keyword) {
@@ -472,19 +485,34 @@ export class JobsService {
 
     const company = await this.prisma.company.findUnique({
       where: { company_id: companyId },
-      select: { company_id: true },
+      select: { company_id: true, is_active: true },
     });
 
     if (!company) {
       throw new NotFoundException('Company khong ton tai');
     }
 
-    const where: { company_id: number; is_active?: boolean } = {
+    const where: {
+      company_id: number;
+      is_active?: boolean;
+      Company?: { is: { is_active: boolean } };
+    } = {
       company_id: companyId,
     };
 
     if (typeof active === 'boolean') {
       where.is_active = active;
+    }
+
+    if (active === true) {
+      if (!company.is_active) {
+        return {
+          jobs: [],
+          total: 0,
+        };
+      }
+
+      where.Company = { is: { is_active: true } };
     }
 
     const [jobs, total] = await Promise.all([
@@ -890,11 +918,17 @@ export class JobsService {
       throw new BadRequestException('limit phai tu 1 den 100');
     }
 
-    const where: { is_active?: boolean } = {};
-
-    if (typeof active === 'boolean') {
-      where.is_active = active;
-    }
+    const where: {
+      is_active?: boolean;
+      Company: { is: { is_active: boolean } };
+    } = {
+      is_active: true,
+      Company: {
+        is: {
+          is_active: true,
+        },
+      },
+    };
 
     const [jobs, total] = await Promise.all([
       this.prisma.jobPost.findMany({
