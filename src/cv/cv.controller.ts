@@ -42,6 +42,7 @@ import { UpdateCvFileDto } from './dto/update-cv-file.dto.js';
 import { UpdateExperienceDto } from './dto/update-experience.dto.js';
 import { UpdatePersonalityDto } from './dto/update-personality.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
+import { UpdateSeekerProfileDto } from './dto/update-seeker-profile.dto.js';
 import { UpdateSkillDto } from './dto/update-skill.dto.js';
 import { CvService, CvUploadFile } from './cv.service.js';
 
@@ -76,6 +77,16 @@ export class CvController {
     @ReqUser() user: RequestUser,
   ) {
     return this.cvService.uploadCvFile(user, file);
+  }
+
+  @ApiOperation({ summary: 'Cap nhat github, linkedin, portfolio cua seeker' })
+  @ApiBody({ type: UpdateSeekerProfileDto })
+  @Put('seeker-profile')
+  updateSeekerProfile(
+    @ReqUser() user: RequestUser,
+    @Body() dto: UpdateSeekerProfileDto,
+  ) {
+    return this.cvService.updateSeekerProfile(user, dto);
   }
 
   @ApiOperation({ summary: 'Them education cho seeker dang dang nhap' })

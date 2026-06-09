@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import cloudinary from './cloudinary.config.js';
+import { extname, basename } from 'node:path';
 
 @Injectable()
 export class CloudinaryService {
@@ -29,13 +30,24 @@ export class CloudinaryService {
 
   async uploadCvFile(file: {
     buffer: Buffer;
+    originalname?: string;
   }): Promise<{ url: string; public_id: string }> {
+    const fileExtension = extname(file.originalname ?? '').toLowerCase();
+    const baseName = basename(file.originalname ?? 'cv', fileExtension)
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'cv';
+
     return new Promise((resolve, reject) => {
       cloudinary.uploader
         .upload_stream(
           {
             folder: 'cv',
             resource_type: 'raw',
+            use_filename: true,
+            unique_filename: true,
+            filename_override: file.originalname ?? `cv${fileExtension || '.pdf'}`,
+            public_id: `${baseName}${fileExtension || '.pdf'}`,
           },
           (error, result) => {
             if (error)
