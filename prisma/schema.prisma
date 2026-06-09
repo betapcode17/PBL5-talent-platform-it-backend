@@ -283,13 +283,6 @@ model Seeker {
   JobBookmark          JobBookmark[]
   JobPostActivity      JobPostActivity[]
   User                 User                  @relation(fields: [seeker_id], references: [user_id])
-  SeekerCertificate    SeekerCertificate[]
-  SeekerEducation      SeekerEducation[]
-  SeekerExperience     SeekerExperience[]
-  SeekerProfileSummary SeekerProfileSummary?
-  SeekerProject        SeekerProject[]
-  SeekerPersonality    SeekerPersonality[]
-  SeekerSkill          SeekerSkill[]
   CvEducation          CvEducation[]
   CvExperience         CvExperience[]
   CvSkill              CvSkill[]
@@ -330,12 +323,15 @@ model CvExperience {
 }
 
 model CvSkill {
-  id        String   @id @default(uuid())
-  userId    Int
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Seeker    Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+  id               String   @id @default(uuid())
+  userId           Int
+  name             String
+  category         String?
+  experienceMonths Int?
+  isStrong         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  Seeker           Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
 
   @@unique([userId, name])
   @@index([userId])
@@ -383,102 +379,6 @@ model CvProject {
   @@index([userId])
 }
 
-model SeekerPersonality {
-  personality_id Int      @id @default(autoincrement())
-  seeker_id      Int
-  name           String
-  description    String?
-  created_date   DateTime @default(now())
-  updated_date   DateTime
-  Seeker         Seeker   @relation(fields: [seeker_id], references: [seeker_id])
-
-  @@index([seeker_id])
-}
-
-model SeekerCertificate {
-  seeker_certificate_id Int       @id @default(autoincrement())
-  seeker_id             Int
-  certificate_name      String
-  certificate_type      String
-  issuing_organization  String?
-  score                 String?
-  issued_date           DateTime?
-  expired_date          DateTime?
-  certificate_file      String?
-  created_date          DateTime  @default(now())
-  updated_date          DateTime
-  Seeker                Seeker    @relation(fields: [seeker_id], references: [seeker_id])
-}
-
-model SeekerEducation {
-  education_id              Int       @id @default(autoincrement())
-  seeker_id                 Int
-  certificate_degree_name   String?
-  major                     String?
-  institute_university_name String?
-  starting_date             DateTime?
-  completion_date           DateTime?
-  cgpa                      Float?
-  created_date              DateTime  @default(now())
-  updated_date              DateTime
-  Seeker                    Seeker    @relation(fields: [seeker_id], references: [seeker_id])
-}
-
-model SeekerExperience {
-  experience_id  Int       @id @default(autoincrement())
-  seeker_id      Int
-  start_date     DateTime?
-  end_date       DateTime?
-  is_current_job Boolean   @default(false)
-  job_title      String?
-  company_name   String?
-  description    String?
-  created_date   DateTime  @default(now())
-  updated_date   DateTime
-  Seeker         Seeker    @relation(fields: [seeker_id], references: [seeker_id])
-}
-
-model SeekerProfileSummary {
-  seeker_id                  Int      @id
-  about_me                   String?
-  strengths                  String?
-  career_objective           String?
-  personality_traits         String?
-  work_attitude              String?
-  preferred_work_environment String?
-  created_date               DateTime @default(now())
-  updated_date               DateTime
-  Seeker                     Seeker   @relation(fields: [seeker_id], references: [seeker_id])
-}
-
-model SeekerProject {
-  project_id          Int       @id @default(autoincrement())
-  seeker_id           Int
-  project_name        String
-  project_description String?
-  role                String?
-  technologies        String?
-  start_date          DateTime?
-  end_date            DateTime?
-  project_url         String?
-  created_date        DateTime  @default(now())
-  updated_date        DateTime
-  Seeker              Seeker    @relation(fields: [seeker_id], references: [seeker_id])
-}
-
-model SeekerSkill {
-  seeker_skill_id   Int      @id @default(autoincrement())
-  seeker_id         Int
-  skill_id          Int
-  experience_months Int?
-  created_date      DateTime @default(now())
-  updated_date      DateTime
-  Seeker            Seeker   @relation(fields: [seeker_id], references: [seeker_id])
-  Skill             Skill    @relation(fields: [skill_id], references: [skill_id])
-
-  @@unique([seeker_id, skill_id])
-}
-
 model Skill {
   skill_id     Int            @id @default(autoincrement())
   skill_name   String         @unique
@@ -486,7 +386,6 @@ model Skill {
   created_date DateTime       @default(now())
   updated_date DateTime
   JobPostSkill JobPostSkill[]
-  SeekerSkill  SeekerSkill[]
 }
 
 model User {

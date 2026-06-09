@@ -245,14 +245,10 @@ export class EmployeesService {
                   user_image: true,
                 },
               },
-              SeekerSkill: {
+              CvSkill: {
                 take: 5,
                 select: {
-                  Skill: {
-                    select: {
-                      skill_name: true,
-                    },
-                  },
+                  name: true,
                 },
               },
             },
@@ -387,9 +383,7 @@ export class EmployeesService {
           githubUrl: candidate.Seeker.github_url,
           linkedinUrl: candidate.Seeker.linkedin_url,
           portfolioUrl: candidate.Seeker.portfolio_url,
-          skills: candidate.Seeker.SeekerSkill.map(
-            (skill) => skill.Skill.skill_name,
-          ),
+          skills: candidate.Seeker.CvSkill.map((skill) => skill.name),
         },
         job: {
           id: candidate.JobPost.job_post_id,
@@ -507,14 +501,10 @@ export class EmployeesService {
                   user_image: true,
                 },
               },
-              SeekerSkill: {
+              CvSkill: {
                 take: 8,
                 select: {
-                  Skill: {
-                    select: {
-                      skill_name: true,
-                    },
-                  },
+                  name: true,
                 },
               },
             },
@@ -558,9 +548,7 @@ export class EmployeesService {
           githubUrl: application.Seeker.github_url,
           linkedinUrl: application.Seeker.linkedin_url,
           portfolioUrl: application.Seeker.portfolio_url,
-          skills: application.Seeker.SeekerSkill.map(
-            (skill) => skill.Skill.skill_name,
-          ),
+          skills: application.Seeker.CvSkill.map((skill) => skill.name),
         },
         job: {
           id: application.JobPost.job_post_id,
