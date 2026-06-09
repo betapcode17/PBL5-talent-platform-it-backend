@@ -13,6 +13,8 @@ import {
   Prisma,
 } from '../generated/prisma/client.js';
 import { MailsService } from '../mails/mails.service.js';
+import { NotificationType } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
 import { CancelInterviewDto } from './dto/cancel-interview.dto.js';
 import { CompleteInterviewDto } from './dto/complete-interview.dto.js';
@@ -110,6 +112,7 @@ export class InterviewsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailsService: MailsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(userId: number, userRole: UserRole, dto: CreateInterviewDto) {
@@ -629,27 +632,83 @@ export class InterviewsService {
 
   private async notifyInterviewCreated(interview: InterviewWithRelations) {
     await this.sendInterviewEmails('scheduled', interview);
-    this.logger.debug(
-      'TODO: tich hop websocket/calendar invite khi project co notification service chuyen biet',
-    );
+    await this.notificationsService.createNotification({
+      title: 'Bạn có lịch phỏng vấn mới',
+      message: `Phỏng vấn cho vị trí ${
+        interview.Application.JobPost.job_title || interview.Application.JobPost.name
+      } đã được lên lịch.`,
+      type: NotificationType.INTERVIEW_SCHEDULED,
+      role: 'SEEKER',
+      receiverId: interview.seeker_id,
+      senderId: interview.interviewer_id,
+      metadata: {
+        interviewId: interview.interview_id,
+        applicationId: interview.application_id,
+        companyId: interview.Application.JobPost.company_id,
+        schedule: interview.schedule.toISOString(),
+      },
+    });
   }
 
   private async notifyInterviewRescheduled(interview: InterviewWithRelations) {
     await this.sendInterviewEmails('rescheduled', interview);
-    this.logger.debug(
-      'TODO: phat event websocket interview_rescheduled khi co notification gateway phu hop',
-    );
+    await this.notificationsService.createNotification({
+      title: 'Lịch phỏng vấn đã thay đổi',
+      message: `Phỏng vấn cho vị trí ${
+        interview.Application.JobPost.job_title || interview.Application.JobPost.name
+      } vừa được dời lịch.`,
+      type: NotificationType.INTERVIEW_RESCHEDULED,
+      role: 'SEEKER',
+      receiverId: interview.seeker_id,
+      senderId: interview.interviewer_id,
+      metadata: {
+        interviewId: interview.interview_id,
+        applicationId: interview.application_id,
+        companyId: interview.Application.JobPost.company_id,
+        schedule: interview.schedule.toISOString(),
+      },
+    });
   }
 
   private async notifyInterviewCancelled(interview: InterviewWithRelations) {
     await this.sendInterviewEmails('cancelled', interview);
-    this.logger.debug(
-      'TODO: phat event websocket interview_cancelled khi co notification gateway phu hop',
-    );
+    await this.notificationsService.createNotification({
+      title: 'Lịch phỏng vấn đã bị hủy',
+      message: `Phỏng vấn cho vị trí ${
+        interview.Application.JobPost.job_title || interview.Application.JobPost.name
+      } đã bị hủy.`,
+      type: NotificationType.INTERVIEW_CANCELLED,
+      role: 'SEEKER',
+      receiverId: interview.seeker_id,
+      senderId: interview.interviewer_id,
+      metadata: {
+        interviewId: interview.interview_id,
+        applicationId: interview.application_id,
+        companyId: interview.Application.JobPost.company_id,
+        reason: interview.cancel_reason,
+      },
+    });
   }
 
   private async handleInterviewCompletion(interview: InterviewWithRelations) {
     await this.sendInterviewEmails('completed', interview);
+    await this.notificationsService.createNotification({
+      title: 'Phỏng vấn đã hoàn tất',
+      message: `Buổi phỏng vấn cho vị trí ${
+        interview.Application.JobPost.job_title || interview.Application.JobPost.name
+      } đã hoàn tất.`,
+      type: NotificationType.INTERVIEW_COMPLETED,
+      role: 'SEEKER',
+      receiverId: interview.seeker_id,
+      senderId: interview.interviewer_id,
+      metadata: {
+        interviewId: interview.interview_id,
+        applicationId: interview.application_id,
+        companyId: interview.Application.JobPost.company_id,
+        offer: interview.offer,
+        rating: interview.rating,
+      },
+    });
 
     if (interview.offer) {
       this.logger.debug(

@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { NotificationType } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
 import { CreateJobDto } from './dto/create-job.dto.js';
 import { SearchJobsQueryDto } from './dto/search-jobs.query.dto.js';
@@ -26,7 +28,10 @@ const KNOWN_TECH_KEYWORDS = [
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private buildExcludeAppliedFilter(
     excludeApplied: boolean | undefined,
@@ -99,6 +104,18 @@ export class JobsService {
         updated_date: new Date(),
       },
       select: { job_post_id: true },
+    });
+
+    await this.notificationsService.notifyRole('ADMIN', {
+      title: 'Có job mới được tạo',
+      message: `${dto.title} vừa được tạo bởi công ty ${company.company_name}.`,
+      type: NotificationType.JOB_CREATED,
+      senderId: employee.employee_id,
+      metadata: {
+        jobId: created.job_post_id,
+        companyId: company.company_id,
+        companyName: company.company_name,
+      },
     });
 
     return { jobId: created.job_post_id };
@@ -857,6 +874,9 @@ export class JobsService {
       select: {
         job_post_id: true,
         company_id: true,
+        employee_id: true,
+        job_title: true,
+        name: true,
       },
     });
 
@@ -875,6 +895,19 @@ export class JobsService {
       },
     });
 
+    await this.notificationsService.createNotification({
+      title: 'Job đã được duyệt',
+      message: `Bài đăng ${job.job_title || job.name} đã được kích hoạt.`,
+      type: NotificationType.JOB_APPROVED,
+      role: 'EMPLOYEE',
+      receiverId: job.employee_id,
+      senderId: actorUserId,
+      metadata: {
+        jobId: job.job_post_id,
+        companyId: job.company_id,
+      },
+    });
+
     return { message: 'Activated' };
   }
 
@@ -884,6 +917,9 @@ export class JobsService {
       select: {
         job_post_id: true,
         company_id: true,
+        employee_id: true,
+        job_title: true,
+        name: true,
       },
     });
 
@@ -899,6 +935,19 @@ export class JobsService {
       data: {
         is_active: false,
         updated_date: new Date(),
+      },
+    });
+
+    await this.notificationsService.createNotification({
+      title: 'Job đã bị từ chối hoặc tắt',
+      message: `Bài đăng ${job.job_title || job.name} đã bị vô hiệu hóa.`,
+      type: NotificationType.JOB_REJECTED,
+      role: 'EMPLOYEE',
+      receiverId: job.employee_id,
+      senderId: actorUserId,
+      metadata: {
+        jobId: job.job_post_id,
+        companyId: job.company_id,
       },
     });
 

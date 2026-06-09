@@ -31,7 +31,7 @@ export class WebSocketGuard implements CanActivate {
     client: Socket,
     jwtService: JwtService,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _configService: ConfigService,
+    _configService?: ConfigService | null,
   ) {
     try {
       let token: string | undefined;
