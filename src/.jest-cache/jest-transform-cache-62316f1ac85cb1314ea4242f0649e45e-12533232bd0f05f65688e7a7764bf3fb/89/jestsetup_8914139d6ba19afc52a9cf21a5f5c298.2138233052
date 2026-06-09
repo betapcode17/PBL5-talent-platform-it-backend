@@ -1,0 +1,2 @@
+5fae0e93d5759bc1a80ee44b37808e14
+global.jest = require('@jest/globals').jest;

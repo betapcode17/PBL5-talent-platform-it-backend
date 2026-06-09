@@ -1,0 +1,41 @@
+818049463c63d9cbc1636467649bd833
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { WebSocketGuard } from '../websocket/websocket.guard.js';
+import { NotificationsController } from './notifications.controller.js';
+import { NotificationsGateway } from './notifications.gateway.js';
+import { NotificationsRealtimeService } from './notifications.realtime.service.js';
+import { NotificationsService } from './notifications.service.js';
+let NotificationsModule = class NotificationsModule {
+};
+NotificationsModule = __decorate([
+    Module({
+        imports: [
+            JwtModule.registerAsync({
+                imports: [ConfigModule],
+                useFactory: (configService) => ({
+                    secret: configService.get('ACCESS_TOKEN_SECRET') ||
+                        'default-secret-key-change-in-production',
+                }),
+                inject: [ConfigService],
+            }),
+        ],
+        controllers: [NotificationsController],
+        providers: [
+            NotificationsRealtimeService,
+            NotificationsService,
+            WebSocketGuard,
+            NotificationsGateway,
+        ],
+        exports: [NotificationsService, NotificationsRealtimeService],
+    })
+], NotificationsModule);
+export { NotificationsModule };
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRTpcXEhPQ0tJNlxcUEJMNVxcYmFja2VuZFxcc3JjXFxub3RpZmljYXRpb25zXFxub3RpZmljYXRpb25zLm1vZHVsZS50cyIsIm1hcHBpbmdzIjoiOzs7Ozs7QUFBQSxPQUFPLEVBQUUsTUFBTSxFQUFFLE1BQU0sZ0JBQWdCLENBQUM7QUFDeEMsT0FBTyxFQUFFLFlBQVksRUFBRSxhQUFhLEVBQUUsTUFBTSxnQkFBZ0IsQ0FBQztBQUM3RCxPQUFPLEVBQUUsU0FBUyxFQUFFLE1BQU0sYUFBYSxDQUFDO0FBQ3hDLE9BQU8sRUFBRSxjQUFjLEVBQUUsTUFBTSxpQ0FBaUMsQ0FBQztBQUNqRSxPQUFPLEVBQUUsdUJBQXVCLEVBQUUsTUFBTSwrQkFBK0IsQ0FBQztBQUN4RSxPQUFPLEVBQUUsb0JBQW9CLEVBQUUsTUFBTSw0QkFBNEIsQ0FBQztBQUNsRSxPQUFPLEVBQUUsNEJBQTRCLEVBQUUsTUFBTSxxQ0FBcUMsQ0FBQztBQUNuRixPQUFPLEVBQUUsb0JBQW9CLEVBQUUsTUFBTSw0QkFBNEIsQ0FBQztBQXVCM0QsSUFBTSxtQkFBbUIsR0FBekIsTUFBTSxtQkFBbUI7Q0FBRyxDQUFBO0FBQXRCLG1CQUFtQjtJQXJCL0IsTUFBTSxDQUFDO1FBQ04sT0FBTyxFQUFFO1lBQ1AsU0FBUyxDQUFDLGFBQWEsQ0FBQztnQkFDdEIsT0FBTyxFQUFFLENBQUMsWUFBWSxDQUFDO2dCQUN2QixVQUFVLEVBQUUsQ0FBQyxhQUE0QixFQUFFLEVBQUUsQ0FBQyxDQUFDO29CQUM3QyxNQUFNLEVBQ0osYUFBYSxDQUFDLEdBQUcsQ0FBUyxxQkFBcUIsQ0FBQzt3QkFDaEQseUNBQXlDO2lCQUM1QyxDQUFDO2dCQUNGLE1BQU0sRUFBRSxDQUFDLGFBQWEsQ0FBQzthQUN4QixDQUFDO1NBQ0g7UUFDRCxXQUFXLEVBQUUsQ0FBQyx1QkFBdUIsQ0FBQztRQUN0QyxTQUFTLEVBQUU7WUFDVCw0QkFBNEI7WUFDNUIsb0JBQW9CO1lBQ3BCLGNBQWM7WUFDZCxvQkFBb0I7U0FDckI7UUFDRCxPQUFPLEVBQUUsQ0FBQyxvQkFBb0IsRUFBRSw0QkFBNEIsQ0FBQztLQUM5RCxDQUFDO0dBQ1csbUJBQW1CLENBQUciLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiRTpcXEhPQ0tJNlxcUEJMNVxcYmFja2VuZFxcc3JjXFxub3RpZmljYXRpb25zXFxub3RpZmljYXRpb25zLm1vZHVsZS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBNb2R1bGUgfSBmcm9tICdAbmVzdGpzL2NvbW1vbic7XG5pbXBvcnQgeyBDb25maWdNb2R1bGUsIENvbmZpZ1NlcnZpY2UgfSBmcm9tICdAbmVzdGpzL2NvbmZpZyc7XG5pbXBvcnQgeyBKd3RNb2R1bGUgfSBmcm9tICdAbmVzdGpzL2p3dCc7XG5pbXBvcnQgeyBXZWJTb2NrZXRHdWFyZCB9IGZyb20gJy4uL3dlYnNvY2tldC93ZWJzb2NrZXQuZ3VhcmQuanMnO1xuaW1wb3J0IHsgTm90aWZpY2F0aW9uc0NvbnRyb2xsZXIgfSBmcm9tICcuL25vdGlmaWNhdGlvbnMuY29udHJvbGxlci5qcyc7XG5pbXBvcnQgeyBOb3RpZmljYXRpb25zR2F0ZXdheSB9IGZyb20gJy4vbm90aWZpY2F0aW9ucy5nYXRld2F5LmpzJztcbmltcG9ydCB7IE5vdGlmaWNhdGlvbnNSZWFsdGltZVNlcnZpY2UgfSBmcm9tICcuL25vdGlmaWNhdGlvbnMucmVhbHRpbWUuc2VydmljZS5qcyc7XG5pbXBvcnQgeyBOb3RpZmljYXRpb25zU2VydmljZSB9IGZyb20gJy4vbm90aWZpY2F0aW9ucy5zZXJ2aWNlLmpzJztcblxuQE1vZHVsZSh7XG4gIGltcG9ydHM6IFtcbiAgICBKd3RNb2R1bGUucmVnaXN0ZXJBc3luYyh7XG4gICAgICBpbXBvcnRzOiBbQ29uZmlnTW9kdWxlXSxcbiAgICAgIHVzZUZhY3Rvcnk6IChjb25maWdTZXJ2aWNlOiBDb25maWdTZXJ2aWNlKSA9PiAoe1xuICAgICAgICBzZWNyZXQ6XG4gICAgICAgICAgY29uZmlnU2VydmljZS5nZXQ8c3RyaW5nPignQUNDRVNTX1RPS0VOX1NFQ1JFVCcpIHx8XG4gICAgICAgICAgJ2RlZmF1bHQtc2VjcmV0LWtleS1jaGFuZ2UtaW4tcHJvZHVjdGlvbicsXG4gICAgICB9KSxcbiAgICAgIGluamVjdDogW0NvbmZpZ1NlcnZpY2VdLFxuICAgIH0pLFxuICBdLFxuICBjb250cm9sbGVyczogW05vdGlmaWNhdGlvbnNDb250cm9sbGVyXSxcbiAgcHJvdmlkZXJzOiBbXG4gICAgTm90aWZpY2F0aW9uc1JlYWx0aW1lU2VydmljZSxcbiAgICBOb3RpZmljYXRpb25zU2VydmljZSxcbiAgICBXZWJTb2NrZXRHdWFyZCxcbiAgICBOb3RpZmljYXRpb25zR2F0ZXdheSxcbiAgXSxcbiAgZXhwb3J0czogW05vdGlmaWNhdGlvbnNTZXJ2aWNlLCBOb3RpZmljYXRpb25zUmVhbHRpbWVTZXJ2aWNlXSxcbn0pXG5leHBvcnQgY2xhc3MgTm90aWZpY2F0aW9uc01vZHVsZSB7fVxuIl0sInZlcnNpb24iOjN9

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { NotificationsService } from '../../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
 import { ChatGateway } from './gateway/chat.gateway.js';
 
@@ -12,6 +13,7 @@ describe('ChatGateway', () => {
         ChatGateway,
         { provide: PrismaService, useValue: {} },
         { provide: JwtService, useValue: {} },
+        { provide: NotificationsService, useValue: {} },
       ],
     }).compile();
 

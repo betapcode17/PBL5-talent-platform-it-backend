@@ -423,8 +423,33 @@ model User {
   registration_date DateTime  @default(now())
   full_name         String?
   Employee          Employee?
+  receivedNotifications Notification[] @relation("NotificationReceiver")
+  sentNotifications     Notification[] @relation("NotificationSender")
   Seeker            Seeker?
   tokens            Token[]
+}
+
+model Notification {
+  notification_id Int              @id @default(autoincrement())
+  title           String
+  message         String
+  type            NotificationType
+  role            NotificationRole
+  receiver_id     Int
+  sender_id       Int?
+  dedupe_key      String?
+  is_read         Boolean          @default(false)
+  read_at         DateTime?
+  metadata        Json?
+  created_date    DateTime         @default(now())
+  updated_date    DateTime         @updatedAt
+  Receiver        User             @relation("NotificationReceiver", fields: [receiver_id], references: [user_id], onDelete: Cascade)
+  Sender          User?            @relation("NotificationSender", fields: [sender_id], references: [user_id], onDelete: SetNull)
+
+  @@index([receiver_id, is_read, created_date(sort: Desc)])
+  @@index([dedupe_key])
+  @@index([role, created_date(sort: Desc)])
+  @@index([type, created_date(sort: Desc)])
 }
 
 enum ApplicationStatus {
@@ -474,4 +499,35 @@ enum EmployerRegistrationRequestStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum NotificationRole {
+  ADMIN
+  SEEKER
+  EMPLOYEE
+}
+
+enum NotificationType {
+  USER_REGISTERED
+  EMPLOYER_REGISTRATION_SUBMITTED
+  EMPLOYER_REGISTRATION_APPROVED
+  EMPLOYER_REGISTRATION_REJECTED
+  JOB_CREATED
+  JOB_REVIEW_REQUIRED
+  REPORT_SUBMITTED
+  APPLICATION_SUBMITTED
+  APPLICATION_ACCEPTED
+  APPLICATION_REJECTED
+  CV_VIEWED
+  JOB_RECOMMENDED
+  COMPANY_REPLIED
+  JOB_BOOKMARKED
+  JOB_APPROVED
+  JOB_REJECTED
+  SEEKER_MESSAGE
+  INTERVIEW_SCHEDULED
+  INTERVIEW_RESCHEDULED
+  INTERVIEW_CANCELLED
+  INTERVIEW_COMPLETED
+  JOB_EXPIRING
 }

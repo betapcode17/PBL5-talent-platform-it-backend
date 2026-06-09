@@ -48,4 +48,27 @@ export class GetCompanyJobsQueryDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Neu la seeker dang dang nhap, loai bo cac job da ung tuyen',
+  })
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    if (value === true || value === 'true') {
+      return true;
+    }
+
+    if (value === false || value === 'false') {
+      return false;
+    }
+
+    return value;
+  })
+  @IsBoolean()
+  @IsOptional()
+  excludeApplied?: boolean;
 }

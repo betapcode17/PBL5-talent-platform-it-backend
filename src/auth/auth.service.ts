@@ -15,6 +15,8 @@ import { OAuth2Client } from 'google-auth-library';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { randomUUID } from 'crypto';
 import { MailsService } from '../mails/mails.service.js';
+import { NotificationType } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { EmployeeCompanyRegisterDto } from './dto/employee-company-register.dto.js';
 
@@ -35,6 +37,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private mailsService: MailsService,
+    private notificationsService: NotificationsService,
   ) {}
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
@@ -122,6 +125,18 @@ export class AuthService {
         role: dto.role,
         is_active: dto.is_active ?? true,
         registration_date: new Date(),
+      },
+    });
+
+    await this.notificationsService.notifyRole('ADMIN', {
+      title: 'Người dùng mới đăng ký',
+      message: `${dto.full_name || dto.email} vừa tạo tài khoản ${dto.role.toLowerCase()}.`,
+      type: NotificationType.USER_REGISTERED,
+      senderId: user.user_id,
+      metadata: {
+        userId: user.user_id,
+        email: user.email,
+        role: user.role,
       },
     });
 
@@ -534,6 +549,18 @@ export class AuthService {
         company_name: dto.company_name,
         company_address: dto.company_address,
         company_website_url: dto.company_website_url || null,
+      },
+    });
+
+    await this.notificationsService.notifyRole('ADMIN', {
+      title: 'Yêu cầu đăng ký nhà tuyển dụng mới',
+      message: `${dto.company_name} vừa gửi yêu cầu đăng ký nhà tuyển dụng.`,
+      type: NotificationType.EMPLOYER_REGISTRATION_SUBMITTED,
+      metadata: {
+        requestId: request.request_id,
+        companyName: request.company_name,
+        contactEmail: request.email,
+        contactName: request.full_name,
       },
     });
 

@@ -10,6 +10,8 @@ import { Socket } from 'socket.io';
 import { PrismaService } from '../../prisma.service.js';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { NotificationType } from '../../generated/prisma/client.js';
+import { NotificationsService } from '../../notifications/notifications.service.js';
 
 interface IMessagePayload {
   chat_id: number;
@@ -39,6 +41,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   //Log ra để biết đã connect hay disconnect, đồng thời lưu trữ user_id của client để sau này có thể kiểm tra quyền truy cập khi họ gửi tin nhắn hoặc tham gia chat
@@ -242,6 +245,54 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
       if (this.server) {
         this.server.to(`chat:${payload.chat_id}`).emit('message:new', msg);
+      }
+
+      if (payload.sender_type === 'EMPLOYEE') {
+        await this.notificationsService.createNotification({
+          title: 'Công ty đã phản hồi tin nhắn',
+          message: msg.content.slice(0, 180),
+          type: NotificationType.COMPANY_REPLIED,
+          role: 'SEEKER',
+          receiverId: chat.seeker_id,
+          senderId: payload.sender_id,
+          metadata: {
+            chatId: chat.chat_id,
+            companyId: chat.company_id,
+            messageId: msg.message_id,
+          },
+        });
+      } else {
+        const employees = await this.prisma.employee.findMany({
+          where: {
+            company_id: chat.company_id,
+            User: {
+              is: {
+                is_active: true,
+              },
+            },
+          },
+          select: {
+            employee_id: true,
+          },
+        });
+
+        await this.notificationsService.notifyUsers(
+          employees.map((employee) => ({
+            title: 'Có tin nhắn mới từ seeker',
+            message: msg.content.slice(0, 180),
+            type: NotificationType.SEEKER_MESSAGE,
+            role: 'EMPLOYEE',
+            receiverId: employee.employee_id,
+            senderId: chat.seeker_id,
+            dedupeKey: `seeker-message:${chat.chat_id}:${msg.message_id}`,
+            metadata: {
+              chatId: chat.chat_id,
+              companyId: chat.company_id,
+              seekerId: chat.seeker_id,
+              messageId: msg.message_id,
+            },
+          })),
+        );
       }
     } catch (error) {
       this.logger.error('Error in handleSend:', error);
