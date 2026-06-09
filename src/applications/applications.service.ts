@@ -107,6 +107,7 @@ export class ApplicationsService {
   async create(userId: number, dto: CreateApplicationDto) {
     const seeker = await this.ensureSeekerProfile(userId);
     const job = await this.validateJobForApply(dto.jobId);
+    const selectedCvUrl = dto.cvUrl?.trim() || seeker.file_cv;
 
     const existing = await this.findExistingApplication(
       seeker.seeker_id,
@@ -117,12 +118,18 @@ export class ApplicationsService {
       throw new ConflictException('Ban da apply job nay roi');
     }
 
+    if (!selectedCvUrl) {
+      throw new BadRequestException(
+        'Ban phai chon CV hoac upload CV moi truoc khi ung tuyen',
+      );
+    }
+
     const created = await this.prisma.jobPostActivity.create({
       data: {
         seeker_id: seeker.seeker_id,
         job_post_id: dto.jobId,
         cover_letter: dto.coverLetter?.trim() || null,
-        cv_url: seeker.file_cv,
+        cv_url: selectedCvUrl,
         current_stage: 'APPLIED',
         status: ApplicationStatus.PENDING,
         last_updated: new Date(),

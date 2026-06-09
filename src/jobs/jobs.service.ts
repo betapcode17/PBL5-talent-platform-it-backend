@@ -28,6 +28,21 @@ const KNOWN_TECH_KEYWORDS = [
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private buildExcludeAppliedFilter(
+    excludeApplied: boolean | undefined,
+    user?: { sub: number; role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN' },
+  ) {
+    if (!excludeApplied || !user || user.role !== 'SEEKER') {
+      return undefined;
+    }
+
+    return {
+      none: {
+        seeker_id: user.sub,
+      },
+    };
+  }
+
   async createJob(actorUserId: number, dto: CreateJobDto) {
     if (dto.salaryRange.min > dto.salaryRange.max) {
       throw new BadRequestException(
@@ -180,7 +195,10 @@ export class JobsService {
     };
   }
 
-  async searchJobs(query: SearchJobsQueryDto) {
+  async searchJobs(
+    query: SearchJobsQueryDto,
+    user?: { sub: number; role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN' },
+  ) {
     const keyword = query.q?.trim();
     const categoryKeyword = query.category?.trim();
     const locationKeyword = query.location?.trim();
@@ -221,6 +239,15 @@ export class JobsService {
         },
       },
     };
+
+    const excludeAppliedFilter = this.buildExcludeAppliedFilter(
+      query.excludeApplied,
+      user,
+    );
+
+    if (excludeAppliedFilter) {
+      where.JobPostActivity = excludeAppliedFilter;
+    }
 
     if (keyword) {
       where.OR = [
@@ -909,6 +936,8 @@ export class JobsService {
     page: number = 1,
     limit: number = 20,
     active: boolean | undefined,
+    excludeApplied: boolean | undefined,
+    user?: { sub: number; role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN' },
   ) {
     if (page < 1) {
       throw new BadRequestException('page phai >= 1');
@@ -921,6 +950,11 @@ export class JobsService {
     const where: {
       is_active?: boolean;
       Company: { is: { is_active: boolean } };
+      JobPostActivity?: {
+        none: {
+          seeker_id: number;
+        };
+      };
     } = {
       is_active: true,
       Company: {
@@ -929,6 +963,15 @@ export class JobsService {
         },
       },
     };
+
+    const excludeAppliedFilter = this.buildExcludeAppliedFilter(
+      excludeApplied,
+      user,
+    );
+
+    if (excludeAppliedFilter) {
+      where.JobPostActivity = excludeAppliedFilter;
+    }
 
     const [jobs, total] = await Promise.all([
       this.prisma.jobPost.findMany({
