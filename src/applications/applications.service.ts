@@ -17,6 +17,7 @@ import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { GetJobApplicationsQueryDto } from './dto/get-job-applications.query.dto.js';
 import { GetMyApplicationsQueryDto } from './dto/get-my-applications.query.dto.js';
 import { RejectApplicationDto } from './dto/reject-application.dto.js';
+import { UpdateApplicationStatusDto } from './dto/update-application-status.dto.js';
 import { ApplicationQueryStatus } from './enums/application.enum.js';
 
 type SeekerProfile = {
@@ -325,32 +326,126 @@ export class ApplicationsService {
     );
 
     return {
-      applications: applications.map((application) => ({
-        id: application.application_id,
-        status: this.toApiStatus(application.status),
-        coverLetter: application.cover_letter,
-        cvUrl: application.cv_url ?? application.Seeker.file_cv,
-        currentStage: application.current_stage,
-        rejectionReason: application.rejection_reason,
-        appliedDate: application.apply_date,
-        updatedDate: application.last_updated,
-        candidate: {
-          id: application.Seeker.seeker_id,
-          fullName: application.Seeker.User.full_name,
-          email: application.Seeker.User.email,
-          phone: application.Seeker.User.phone,
-          userImage: application.Seeker.User.user_image,
-          githubUrl: application.Seeker.github_url,
-          linkedinUrl: application.Seeker.linkedin_url,
-          portfolioUrl: application.Seeker.portfolio_url,
-          defaultCvUrl: application.Seeker.file_cv,
-        },
-      })),
+      applications: applications.map((application) => {
+        const aiDetails = this.getAiScreeningDetails(application.ai_raw_result);
+
+        return {
+          id: application.application_id,
+          status: this.toApiStatus(application.status),
+          coverLetter: application.cover_letter,
+          cvUrl: application.cv_url ?? application.Seeker.file_cv,
+          currentStage: application.current_stage,
+          rejectionReason: application.rejection_reason,
+          appliedDate: application.apply_date,
+          updatedDate: application.last_updated,
+          aiScore: application.ai_score,
+          aiRecommendation: application.ai_recommendation,
+          aiSummary: application.ai_summary,
+          aiStrengths: application.ai_strengths ?? [],
+          aiConcerns: application.ai_concerns ?? [],
+          aiScreenedAt: application.ai_screened_at,
+          aiScreenedById: application.ai_screened_by_id,
+          aiModel: application.ai_model,
+          ...aiDetails,
+          candidate: {
+            id: application.Seeker.seeker_id,
+            fullName: application.Seeker.User.full_name,
+            email: application.Seeker.User.email,
+            phone: application.Seeker.User.phone,
+            userImage: application.Seeker.User.user_image,
+            githubUrl: application.Seeker.github_url,
+            linkedinUrl: application.Seeker.linkedin_url,
+            portfolioUrl: application.Seeker.portfolio_url,
+            defaultCvUrl: application.Seeker.file_cv,
+          },
+        };
+      }),
       total,
       job: {
         id: job.job_post_id,
         title: job.job_title || job.name,
       },
+    };
+  }
+
+  private getAiScreeningDetails(rawResult: unknown) {
+    const raw = this.isRecord(rawResult) ? rawResult : {};
+
+    return {
+      ruleScore: this.toNullableNumber(raw.ruleScore),
+      llmScore: this.toNullableNumber(raw.llmScore),
+      finalScore: this.toNullableNumber(raw.finalScore),
+      screeningMode: this.toNullableString(raw.screeningMode),
+      judgeTopN: this.toNullableNumber(raw.judgeTopN),
+      llmJudgeStatus: this.toNullableString(raw.llmJudgeStatus),
+      weights: this.isRecord(raw.weights) ? raw.weights : {},
+      weightReasoning: this.isRecord(raw.weightReasoning)
+        ? raw.weightReasoning
+        : {},
+      scoreBreakdown: this.isRecord(raw.scoreBreakdown)
+        ? raw.scoreBreakdown
+        : {},
+      flags: this.toStringArray(raw.flags),
+      riskFlags: this.toStringArray(raw.riskFlags),
+    };
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private toNullableString(value: unknown) {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  private toNullableNumber(value: unknown): number | null {
+    const numberValue = Number(value);
+    return value !== null &&
+      value !== undefined &&
+      value !== '' &&
+      Number.isFinite(numberValue)
+      ? numberValue
+      : null;
+  }
+
+  private toStringArray(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string')
+      : [];
+  }
+
+  async updateStatus(
+    applicationId: number,
+    userId: number,
+    dto: UpdateApplicationStatusDto,
+  ) {
+    const employee = await this.ensureEmployeeProfile(userId);
+    await this.ensureApplicationOwnership(applicationId, employee.company_id);
+
+    const updated = await this.prisma.jobPostActivity.update({
+      where: { application_id: applicationId },
+      data: {
+        status: dto.status as ApplicationStatus,
+        current_stage: dto.status,
+        rejection_reason:
+          dto.status === ApplicationStatus.REJECTED ? undefined : null,
+        last_updated: new Date(),
+      },
+      select: {
+        application_id: true,
+        status: true,
+        current_stage: true,
+        rejection_reason: true,
+        last_updated: true,
+      },
+    });
+
+    return {
+      id: updated.application_id,
+      status: updated.status,
+      currentStage: updated.current_stage,
+      rejectionReason: updated.rejection_reason,
+      updatedAt: updated.last_updated,
     };
   }
 
