@@ -32,6 +32,15 @@ const toOptionalBoolean = ({ value }: { value: unknown }) => {
 
 export class GetAdminUsersQueryDto {
   @ApiPropertyOptional({
+    example: true,
+    description: 'Loai bo tai khoan admin khoi ket qua',
+  })
+  @Transform(toOptionalBoolean)
+  @IsBoolean()
+  @IsOptional()
+  excludeAdmins?: boolean;
+
+  @ApiPropertyOptional({
     enum: UserRole,
     example: UserRole.SEEKER,
     description: 'Loc user theo role',

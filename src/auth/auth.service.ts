@@ -52,18 +52,18 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Email hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng');
+      throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.password);
 
     if (!isMatch) {
-      throw new UnauthorizedException('Email hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng');
+      throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
     if (!user.is_active) {
       throw new UnauthorizedException(
-        'TÃ i khoáº£n cá»§a báº¡n Ä‘Ã£ bá»‹ khÃ³a. Vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn Ä‘á»ƒ biáº¿t thÃªm chi tiáº¿t.',
+        'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.',
       );
     }
     const payload: JwtPayload = {
@@ -208,7 +208,9 @@ export class AuthService {
   }
   async googleOneTapLogin(credential: string) {
     if (!process.env.GOOGLE_CLIENT_ID) {
-      throw new BadRequestException('GOOGLE_CLIENT_ID chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh');
+      throw new BadRequestException(
+        'GOOGLE_CLIENT_ID chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh',
+      );
     }
 
     // Verify token tá»« Google
@@ -282,7 +284,9 @@ export class AuthService {
     }
 
     if (!email) {
-      throw new ForbiddenException('Github account khÃ´ng cÃ³ email kháº£ dá»¥ng');
+      throw new ForbiddenException(
+        'Github account khÃ´ng cÃ³ email kháº£ dá»¥ng',
+      );
     }
 
     return this.socialLogin(email, fullName, avatar, 'Github');

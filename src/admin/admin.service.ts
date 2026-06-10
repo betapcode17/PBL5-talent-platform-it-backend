@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { NotificationType, Prisma } from '../generated/prisma/client.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
@@ -104,6 +108,10 @@ export class AdminService {
     const search = query.search?.trim();
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
+
+    if (query.excludeAdmins) {
+      where.role = { not: 'ADMIN' };
+    }
 
     if (query.role) {
       where.role = query.role;
