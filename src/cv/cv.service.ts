@@ -19,6 +19,7 @@ import { UpdateEducationDto } from './dto/update-education.dto.js';
 import { UpdateExperienceDto } from './dto/update-experience.dto.js';
 import { UpdatePersonalityDto } from './dto/update-personality.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
+import { UpdateSeekerProfileDto } from './dto/update-seeker-profile.dto.js';
 import { UpdateSkillDto } from './dto/update-skill.dto.js';
 
 type RequestUser = {
@@ -65,7 +66,7 @@ export class CvService {
   ) {}
 
   async findOne(id: number, user: RequestUser) {
-    this.ensureCanViewCv(id, user);
+    await this.ensureCanViewCv(id, user);
     const seekerId =
       user.role === 'SEEKER' && user.sub === id
         ? await this.getOrCreateMyCv(user.sub)
@@ -83,6 +84,9 @@ export class CvService {
             email: true,
           },
         },
+        github_url: true,
+        linkedin_url: true,
+        portfolio_url: true,
         CvEducation: {
           orderBy: { startDate: 'desc' },
         },
@@ -116,6 +120,9 @@ export class CvService {
         id: cv.User.user_id,
         fullName: cv.User.full_name,
         email: cv.User.email,
+        githubUrl: cv.github_url,
+        linkedinUrl: cv.linkedin_url,
+        portfolioUrl: cv.portfolio_url,
       },
       educations: cv.CvEducation.map((item) => ({
         id: item.id,
@@ -189,6 +196,36 @@ export class CvService {
     });
 
     return { cvUrl: url };
+  }
+
+  async updateSeekerProfile(user: RequestUser, dto: UpdateSeekerProfileDto) {
+    if (!user) {
+      throw new UnauthorizedException('Chua dang nhap');
+    }
+
+    if (user.role !== 'SEEKER') {
+      throw new ForbiddenException('Seeker only');
+    }
+
+    const seekerId = await this.getOrCreateMyCv(user.sub);
+
+    const data = {
+      github_url: dto.githubUrl?.trim() || null,
+      linkedin_url: dto.linkedinUrl?.trim() || null,
+      portfolio_url: dto.portfolioUrl?.trim() || null,
+      updated_date: new Date(),
+    };
+
+    await this.prisma.seeker.update({
+      where: { seeker_id: seekerId },
+      data,
+    });
+
+    return {
+      githubUrl: data.github_url,
+      linkedinUrl: data.linkedin_url,
+      portfolioUrl: data.portfolio_url,
+    };
   }
 
   async createEducation(user: RequestUser, dto: CreateEducationDto) {
@@ -729,17 +766,52 @@ export class CvService {
     }
   }
 
-  private ensureCanViewCv(id: number, user: RequestUser) {
+  private async ensureCanViewCv(id: number, user: RequestUser) {
     if (!user) {
       throw new UnauthorizedException('Chua dang nhap');
     }
 
-    if (user.role !== 'SEEKER' && user.role !== 'ADMIN') {
+    if (user.role === 'ADMIN') {
+      return;
+    }
+
+    if (user.role === 'SEEKER') {
+      if (user.sub !== id) {
+        throw new ForbiddenException('Khong co quyen xem CV cua nguoi khac');
+      }
+
+      return;
+    }
+
+    if (user.role !== 'EMPLOYEE') {
       throw new ForbiddenException('Khong co quyen xem CV');
     }
 
-    if (user.role === 'SEEKER' && user.sub !== id) {
-      throw new ForbiddenException('Khong co quyen xem CV cua nguoi khac');
+    const employee = await this.prisma.employee.findUnique({
+      where: { employee_id: user.sub },
+      select: {
+        company_id: true,
+      },
+    });
+
+    if (!employee) {
+      throw new ForbiddenException('Khong co quyen xem CV');
+    }
+
+    const matchedApplication = await this.prisma.jobPostActivity.findFirst({
+      where: {
+        seeker_id: id,
+        JobPost: {
+          company_id: employee.company_id,
+        },
+      },
+      select: {
+        application_id: true,
+      },
+    });
+
+    if (!matchedApplication) {
+      throw new ForbiddenException('Khong co quyen xem CV cua ung vien nay');
     }
   }
 

@@ -6,11 +6,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { extname } from 'node:path';
 import { ApplicationStatus, Prisma } from '../generated/prisma/client.js';
 import { MailsService } from '../mails/mails.service.js';
 import { NotificationType } from '../generated/prisma/client.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma.service.js';
+import { CloudinaryService } from '../upload/cloudinary.service.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { GetJobApplicationsQueryDto } from './dto/get-job-applications.query.dto.js';
 import { GetMyApplicationsQueryDto } from './dto/get-my-applications.query.dto.js';
@@ -36,6 +38,21 @@ type EmployeeProfile = {
     is_active: boolean;
   };
 };
+
+type CvUploadFile = {
+  buffer: Buffer;
+  size: number;
+  mimetype: string;
+  originalname: string;
+};
+
+const MAX_CV_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_CV_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+const ALLOWED_CV_EXTENSIONS = new Set(['.pdf', '.doc', '.docx']);
 
 type ManagedJob = {
   job_post_id: number;
@@ -105,6 +122,7 @@ export class ApplicationsService {
     private readonly prisma: PrismaService,
     private readonly mailsService: MailsService,
     private readonly notificationsService: NotificationsService,
+    private readonly cloudinary: CloudinaryService,
   ) {}
 
   async create(userId: number, dto: CreateApplicationDto) {
@@ -123,7 +141,7 @@ export class ApplicationsService {
 
     if (!selectedCvUrl) {
       throw new BadRequestException(
-        'Ban phai chon CV hoac upload CV moi truoc khi ung tuyen',
+        'Vui long chon hoac tai len CV truoc khi ung tuyen',
       );
     }
 
@@ -148,6 +166,15 @@ export class ApplicationsService {
       appId: created.application_id,
       status: ApplicationQueryStatus.PENDING,
     };
+  }
+
+  async uploadApplicationCv(userId: number, file?: CvUploadFile) {
+    await this.ensureSeekerProfile(userId);
+    this.validateCvFile(file);
+
+    const { url } = await this.cloudinary.uploadCvFile(file);
+
+    return { cvUrl: url };
   }
 
   async findMine(userId: number, query: GetMyApplicationsQueryDto) {
@@ -616,6 +643,26 @@ export class ApplicationsService {
         application_id: true,
       },
     });
+  }
+
+  private validateCvFile(file?: CvUploadFile): asserts file is CvUploadFile {
+    if (!file) {
+      throw new BadRequestException('Vui long chon file CV');
+    }
+
+    if (file.size > MAX_CV_FILE_SIZE) {
+      throw new BadRequestException('CV vuot qua dung luong toi da 5MB');
+    }
+
+    if (!ALLOWED_CV_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException('Chi chap nhan file PDF, DOC hoac DOCX');
+    }
+
+    const extension = extname(file.originalname ?? '').toLowerCase();
+
+    if (!extension || !ALLOWED_CV_EXTENSIONS.has(extension)) {
+      throw new BadRequestException('Dinh dang CV khong hop le');
+    }
   }
 
   private buildStatusFilter(status?: ApplicationQueryStatus) {

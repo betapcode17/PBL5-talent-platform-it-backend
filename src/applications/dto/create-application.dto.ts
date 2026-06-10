@@ -10,18 +10,6 @@ export class CreateApplicationDto {
   jobId!: number;
 
   @ApiPropertyOptional({
-    example: 'Toi rat quan tam vi tri nay va co kinh nghiem NestJS/Prisma.',
-  })
-  @IsOptional()
-  @Transform(({ value }: { value: unknown }): string | undefined =>
-    typeof value === 'string' && value.trim() === ''
-      ? undefined
-      : (value as string | undefined),
-  )
-  @IsString()
-  coverLetter?: string;
-
-  @ApiPropertyOptional({
     example: 'https://res.cloudinary.com/demo/raw/upload/cv.pdf',
   })
   @IsOptional()
@@ -32,4 +20,16 @@ export class CreateApplicationDto {
   )
   @IsString()
   cvUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'Toi rat quan tam vi tri nay va co kinh nghiem NestJS/Prisma.',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }): string | undefined =>
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : (value as string | undefined),
+  )
+  @IsString()
+  coverLetter?: string;
 }

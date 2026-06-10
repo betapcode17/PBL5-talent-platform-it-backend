@@ -9,6 +9,15 @@ export class CvSeekerResponseDto {
 
   @ApiProperty({ example: 'seeker@example.com' })
   email!: string;
+
+  @ApiProperty({ example: 'https://github.com/johndoe', nullable: true })
+  githubUrl!: string | null;
+
+  @ApiProperty({ example: 'https://linkedin.com/in/johndoe', nullable: true })
+  linkedinUrl!: string | null;
+
+  @ApiProperty({ example: 'https://portfolio.example.com', nullable: true })
+  portfolioUrl!: string | null;
 }
 
 export class CvResponseDto {

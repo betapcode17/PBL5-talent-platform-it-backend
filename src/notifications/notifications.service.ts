@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -33,39 +34,53 @@ type CreateNotificationInput = {
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: NotificationsRealtimeService,
   ) {}
 
   async createNotification(input: CreateNotificationInput) {
-    const notification = await this.prisma.notification.create({
-      data: {
-        title: input.title,
-        message: input.message,
-        type: input.type,
-        role: input.role,
-        receiver_id: input.receiverId,
-        sender_id: input.senderId ?? null,
-        dedupe_key: input.dedupeKey ?? null,
-        metadata: input.metadata,
-      },
-    });
+    try {
+      const notification = await this.prisma.notification.create({
+        data: {
+          title: input.title,
+          message: input.message,
+          type: input.type,
+          role: input.role,
+          receiver_id: input.receiverId,
+          sender_id: input.senderId ?? null,
+          dedupe_key: input.dedupeKey ?? null,
+          metadata: input.metadata,
+        },
+      });
 
-    const payload = this.mapNotification(notification);
-    const unreadCount = await this.prisma.notification.count({
-      where: {
-        receiver_id: input.receiverId,
-        is_read: false,
-      },
-    });
+      const payload = this.mapNotification(notification);
+      const unreadCount = await this.prisma.notification.count({
+        where: {
+          receiver_id: input.receiverId,
+          is_read: false,
+        },
+      });
 
-    this.realtime.emitToUser(input.receiverId, NotificationEvent.NEW, payload);
-    this.realtime.emitToUser(input.receiverId, NotificationEvent.UNREAD_COUNT, {
-      unreadCount,
-    });
+      this.realtime.emitToUser(input.receiverId, NotificationEvent.NEW, payload);
+      this.realtime.emitToUser(input.receiverId, NotificationEvent.UNREAD_COUNT, {
+        unreadCount,
+      });
 
-    return payload;
+      return payload;
+    } catch (error) {
+      if (this.isNotificationTableMissing(error)) {
+        this.logger.warn(
+          `Skip createNotification because Notification table is missing. receiverId=${input.receiverId}, type=${input.type}`,
+        );
+
+        return this.buildFallbackNotification(input);
+      }
+
+      throw error;
+    }
   }
 
   async notifyUsers(inputs: CreateNotificationInput[]) {
@@ -88,26 +103,38 @@ export class NotificationsService {
       return this.createNotification(input);
     }
 
-    const since = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
-    const existing = await this.prisma.notification.findFirst({
-      where: {
-        receiver_id: input.receiverId,
-        type: input.type,
-        dedupe_key: input.dedupeKey,
-        created_date: {
-          gte: since,
+    try {
+      const since = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
+      const existing = await this.prisma.notification.findFirst({
+        where: {
+          receiver_id: input.receiverId,
+          type: input.type,
+          dedupe_key: input.dedupeKey,
+          created_date: {
+            gte: since,
+          },
         },
-      },
-      orderBy: {
-        created_date: 'desc',
-      },
-    });
+        orderBy: {
+          created_date: 'desc',
+        },
+      });
 
-    if (existing) {
-      return this.mapNotification(existing);
+      if (existing) {
+        return this.mapNotification(existing);
+      }
+
+      return this.createNotification(input);
+    } catch (error) {
+      if (this.isNotificationTableMissing(error)) {
+        this.logger.warn(
+          `Skip createNotificationIfNotExists because Notification table is missing. receiverId=${input.receiverId}, type=${input.type}`,
+        );
+
+        return this.buildFallbackNotification(input);
+      }
+
+      throw error;
     }
-
-    return this.createNotification(input);
   }
 
   async notifyRole(
@@ -141,34 +168,64 @@ export class NotificationsService {
       ...(typeof query.isRead === 'boolean' ? { is_read: query.isRead } : {}),
     };
 
-    const [items, total] = await Promise.all([
-      this.prisma.notification.findMany({
-        where,
-        orderBy: { created_date: 'desc' },
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
-      }),
-      this.prisma.notification.count({ where }),
-    ]);
+    try {
+      const [items, total] = await Promise.all([
+        this.prisma.notification.findMany({
+          where,
+          orderBy: { created_date: 'desc' },
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+        }),
+        this.prisma.notification.count({ where }),
+      ]);
 
-    return {
-      items: items.map((item) => this.mapNotification(item)),
-      total,
-      page: query.page,
-      limit: query.limit,
-      totalPages: Math.ceil(total / query.limit),
-    };
+      return {
+        items: items.map((item) => this.mapNotification(item)),
+        total,
+        page: query.page,
+        limit: query.limit,
+        totalPages: Math.ceil(total / query.limit),
+      };
+    } catch (error) {
+      if (this.isNotificationTableMissing(error)) {
+        this.logger.warn(
+          `Return empty notifications because Notification table is missing. receiverId=${user.sub}`,
+        );
+
+        return {
+          items: [],
+          total: 0,
+          page: query.page,
+          limit: query.limit,
+          totalPages: 0,
+        };
+      }
+
+      throw error;
+    }
   }
 
   async getUnreadCount(user: RequestUser) {
-    const unreadCount = await this.prisma.notification.count({
-      where: {
-        receiver_id: user.sub,
-        is_read: false,
-      },
-    });
+    try {
+      const unreadCount = await this.prisma.notification.count({
+        where: {
+          receiver_id: user.sub,
+          is_read: false,
+        },
+      });
 
-    return { unreadCount };
+      return { unreadCount };
+    } catch (error) {
+      if (this.isNotificationTableMissing(error)) {
+        this.logger.warn(
+          `Return unreadCount=0 because Notification table is missing. receiverId=${user.sub}`,
+        );
+
+        return { unreadCount: 0 };
+      }
+
+      throw error;
+    }
   }
 
   async markAsRead(user: RequestUser, notificationId: number) {
@@ -278,5 +335,34 @@ export class NotificationsService {
       createdAt: notification.created_date,
       updatedAt: notification.updated_date,
     };
+  }
+
+  private buildFallbackNotification(input: CreateNotificationInput) {
+    const now = new Date();
+
+    return {
+      id: 0,
+      title: input.title,
+      message: input.message,
+      type: input.type,
+      role: input.role,
+      receiverId: input.receiverId,
+      senderId: input.senderId ?? null,
+      dedupeKey: input.dedupeKey ?? null,
+      isRead: false,
+      readAt: null,
+      metadata: input.metadata ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  private isNotificationTableMissing(error: unknown) {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === 'P2021'
+    );
   }
 }
