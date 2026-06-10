@@ -569,8 +569,7 @@ export class AuthService {
     });
 
     return {
-      message:
-        'Dang ky nha tuyen dung da duoc ghi nhan va dang cho admin duyet',
+      message: 'Đăng ký nhà tuyển dụng đã gửi đến quản trị viên',
       request_id: request.request_id,
       status: request.status,
     };

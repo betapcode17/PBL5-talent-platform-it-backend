@@ -806,12 +806,60 @@ export class JobsService {
       updateData.salary = `${dto.salaryRange.min}-${dto.salaryRange.max}`;
     }
 
-    await this.prisma.jobPost.update({
+    if (dto.isActive !== undefined) {
+      updateData.is_active = dto.isActive;
+    }
+
+    const updated = await this.prisma.jobPost.update({
       where: { job_post_id: jobId },
       data: updateData,
+      include: {
+        Company: {
+          select: {
+            company_id: true,
+            company_name: true,
+            company_image: true,
+            city: true,
+            country: true,
+          },
+        },
+        Category: {
+          select: { category_id: true, name: true },
+        },
+        JobType: {
+          select: { job_type_id: true, job_type: true },
+        },
+      },
     });
 
-    return this.getJobDetail(jobId);
+    const requirements = updated.candidate_requirements
+      ? updated.candidate_requirements
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : [];
+
+    const [minSalary, maxSalary] = (updated.salary ?? '')
+      .split('-')
+      .map((value) => Number(value.trim()));
+
+    return {
+      id: updated.job_post_id,
+      title: updated.job_title || updated.name,
+      description: updated.job_description,
+      requirements,
+      salary: updated.salary,
+      salaryRange: {
+        min: Number.isFinite(minSalary) ? minSalary : null,
+        max: Number.isFinite(maxSalary) ? maxSalary : null,
+      },
+      isActive: updated.is_active,
+      createdDate: updated.created_date,
+      updatedDate: updated.updated_date,
+      company: updated.Company,
+      category: updated.Category,
+      jobType: updated.JobType,
+    };
   }
 
   async deleteJob(jobId: number, actorUserId: number) {
