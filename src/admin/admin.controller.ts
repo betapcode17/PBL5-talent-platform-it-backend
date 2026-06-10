@@ -225,7 +225,9 @@ export class AdminController {
     return this.adminService.deactivateCompany(id);
   }
 
-  @ApiOperation({ summary: 'Lay danh sach yeu cau dang ky nha tuyen dung cho admin (ADMIN)' })
+  @ApiOperation({
+    summary: 'Lay danh sach yeu cau dang ky nha tuyen dung cho admin (ADMIN)',
+  })
   @ApiQuery({ name: 'search', required: false, example: 'tech company' })
   @ApiQuery({
     name: 'status',
@@ -242,16 +244,16 @@ export class AdminController {
     return this.adminService.getEmployerRegistrationRequests(query);
   }
 
-  @ApiOperation({ summary: 'Phe duyet yeu cau dang ky nha tuyen dung va tao moi cong ty + tai khoan (ADMIN)' })
+  @ApiOperation({
+    summary:
+      'Phe duyet yeu cau dang ky nha tuyen dung va tao moi cong ty + tai khoan (ADMIN)',
+  })
   @Patch('employer-registration-requests/:id/approve')
   approveEmployerRegistrationRequest(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: ReviewEmployerRegistrationDto,
   ) {
-    return this.adminService.approveEmployerRegistrationRequest(
-      id,
-      body.note,
-    );
+    return this.adminService.approveEmployerRegistrationRequest(id, body.note);
   }
 
   @ApiOperation({ summary: 'Tu choi yeu cau dang ky nha tuyen dung (ADMIN)' })
