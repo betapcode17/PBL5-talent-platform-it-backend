@@ -54,6 +54,7 @@ model Company {
   EmployerRegistrationRequest EmployerRegistrationRequest[]
   Employee              Employee[]
   JobPost               JobPost[]
+  AiScreeningRun        AiScreeningRun[]
 }
 
 model EmployerRegistrationRequest {
@@ -133,6 +134,7 @@ model Employee {
   AssignedInterviews Interview[]         @relation("InterviewAssignedEmployee")
   CreatedInterviews  Interview[]         @relation("InterviewCreatedByEmployee")
   JobPost            JobPost[]
+  AiScreeningRun     AiScreeningRun[]
 }
 
 model InterviewSchedule {
@@ -232,6 +234,60 @@ model JobPost {
   JobType                JobType           @relation(fields: [job_type_id], references: [job_type_id])
   JobPostActivity        JobPostActivity[]
   JobPostSkill           JobPostSkill[]
+  AiScreeningRun         AiScreeningRun[]
+  JobAiCriteriaCache     JobAiCriteriaCache[]
+}
+
+model JobAiCriteriaCache {
+  id              Int      @id @default(autoincrement())
+  jobPostId       Int      @map("job_post_id")
+  jobDocumentHash String   @map("job_document_hash")
+  modelVersion    String   @map("model_version")
+  promptVersion   String   @map("prompt_version")
+  jobCriteria     Json     @map("job_criteria")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  JobPost         JobPost  @relation(fields: [jobPostId], references: [job_post_id], onDelete: Cascade)
+
+  @@unique([jobPostId, jobDocumentHash, modelVersion, promptVersion])
+  @@index([jobPostId])
+  @@map("job_ai_criteria_cache")
+}
+
+model AiScreeningRun {
+  id                   Int                  @id @default(autoincrement())
+  jobPostId            Int                  @map("job_post_id")
+  applicationId        Int?                 @map("application_id")
+  employeeId           Int                  @map("employee_id")
+  companyId            Int                  @map("company_id")
+  mode                 String
+  limit                Int
+  force                Boolean
+  judgeTopN            Int?                 @map("judge_top_n")
+  status               AiScreeningRunStatus @default(PENDING)
+  totalCount           Int                  @default(0) @map("total_count")
+  processedCount       Int                  @default(0) @map("processed_count")
+  successCount         Int                  @default(0) @map("success_count")
+  failedCount          Int                  @default(0) @map("failed_count")
+  totalDurationMs      Int                  @default(0) @map("total_duration_ms")
+  extractionDurationMs Int                  @default(0) @map("extraction_duration_ms")
+  scoringDurationMs    Int                  @default(0) @map("scoring_duration_ms")
+  judgeDurationMs      Int                  @default(0) @map("judge_duration_ms")
+  saveDurationMs       Int                  @default(0) @map("save_duration_ms")
+  startedAt            DateTime?            @map("started_at")
+  completedAt          DateTime?            @map("completed_at")
+  errorMessage         String?              @map("error_message") @db.Text
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+  JobPost              JobPost              @relation(fields: [jobPostId], references: [job_post_id], onDelete: Cascade)
+  Employee             Employee             @relation(fields: [employeeId], references: [employee_id], onDelete: Cascade)
+  Company              Company              @relation(fields: [companyId], references: [company_id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([companyId])
+  @@index([jobPostId])
+  @@index([applicationId])
+  @@map("ai_screening_runs")
 }
 
 model JobPostActivity {
@@ -245,6 +301,15 @@ model JobPostActivity {
   status            ApplicationStatus   @default(PENDING)
   rejection_reason  String?
   last_updated      DateTime
+  ai_score          Float?
+  ai_recommendation String?
+  ai_summary        String?             @db.Text
+  ai_strengths      Json?
+  ai_concerns       Json?
+  ai_screened_at    DateTime?
+  ai_screened_by_id Int?
+  ai_model          String?
+  ai_raw_result     Json?
   InterviewSchedule InterviewSchedule[]
   Interviews        Interview[]         @relation("ApplicationInterviews")
   JobPost           JobPost             @relation(fields: [job_post_id], references: [job_post_id])
@@ -458,6 +523,11 @@ enum ApplicationStatus {
   FAILED
   HIRED
   REJECTED
+  APPLIED
+  REVIEWING
+  SHORTLISTED
+  INTERVIEWING
+  OFFERED
 }
 
 enum InterviewStatus {
@@ -493,6 +563,14 @@ enum WorkType {
 enum SenderType {
   SEEKER
   EMPLOYEE
+}
+
+enum AiScreeningRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 enum EmployerRegistrationRequestStatus {

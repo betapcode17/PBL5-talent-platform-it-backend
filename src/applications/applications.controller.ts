@@ -32,6 +32,7 @@ import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { GetJobApplicationsQueryDto } from './dto/get-job-applications.query.dto.js';
 import { GetMyApplicationsQueryDto } from './dto/get-my-applications.query.dto.js';
 import { RejectApplicationDto } from './dto/reject-application.dto.js';
+import { UpdateApplicationStatusDto } from './dto/update-application-status.dto.js';
 import { ApplicationQueryStatus } from './enums/application.enum.js';
 
 type RequestUser = {
@@ -133,6 +134,29 @@ export class ApplicationsController {
     @Param('id', ParseIntPipe) applicationId: number,
   ) {
     return this.applicationsService.accept(applicationId, user.sub);
+  }
+
+  @ApiOperation({ summary: 'Cap nhat status cua application' })
+  @ApiParam({ name: 'id', example: 1 })
+  @ApiBody({ type: UpdateApplicationStatusDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Application status duoc cap nhat',
+  })
+  @ApiResponse({ status: 403, description: 'Khong co quyen cap nhat' })
+  @ApiResponse({ status: 404, description: 'Application khong ton tai' })
+  @UseGuards(EmployeeGuard)
+  @Patch(':id/status')
+  updateStatus(
+    @ReqUser() user: RequestUser,
+    @Param('id', ParseIntPipe) applicationId: number,
+    @Body() dto: UpdateApplicationStatusDto,
+  ) {
+    return this.applicationsService.updateStatus(
+      applicationId,
+      user.sub,
+      dto,
+    );
   }
 
   @ApiOperation({ summary: 'Tu choi application' })
