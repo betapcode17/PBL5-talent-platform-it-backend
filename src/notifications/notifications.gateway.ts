@@ -23,6 +23,16 @@ type SocketUser = {
   email: string;
 };
 
+type NotificationSocket = Socket & {
+  data: {
+    user?: SocketUser;
+    userId?: number;
+    role?: NotificationRole;
+  };
+};
+
+type NotificationSocketData = NotificationSocket['data'];
+
 @WebSocketGateway({
   cors: {
     origin: ['http://localhost:5173', 'http://localhost:3000'],
@@ -47,45 +57,71 @@ export class NotificationsGateway
     this.realtime.attachServer(server);
   }
 
-  handleConnection(client: Socket) {
-    const user = WebSocketGuard.validateToken(client, this.jwtService) as SocketUser;
-    client.data.user = user;
-    client.data.userId = user.sub;
-    client.data.role = user.role;
+  handleConnection(client: NotificationSocket) {
+    let user: SocketUser;
+
+    try {
+      user = WebSocketGuard.validateToken(
+        client,
+        this.jwtService,
+      ) as SocketUser;
+    } catch {
+      client.disconnect(true);
+      return;
+    }
+
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    const socketData = client.data as unknown as NotificationSocketData;
+    socketData.user = user;
+    socketData.userId = user.sub;
+    socketData.role = user.role;
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
     void client.join(this.realtime.getUserRoom(user.sub));
     void client.join(this.realtime.getRoleRoom(user.role));
   }
 
-  handleDisconnect(_client: Socket) {}
+  handleDisconnect(client: NotificationSocket) {
+    void client;
+  }
 
   @SubscribeMessage('notifications:join')
-  async handleJoin(
-    @ConnectedSocket() client: Socket,
+  handleJoin(
+    @ConnectedSocket() client: NotificationSocket,
     @MessageBody() body: JoinNotificationRoomDto,
   ) {
-    const role = (body.role ?? client.data.role) as NotificationRole;
-    void client.join(this.realtime.getUserRoom(client.data.userId as number));
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    const socketData = client.data as unknown as NotificationSocketData;
+    const role = (body.role ?? socketData.role) as NotificationRole;
+    const userId = socketData.userId;
+    void client.join(this.realtime.getUserRoom(socketData.userId as number));
     void client.join(this.realtime.getRoleRoom(role));
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment */
     return {
       event: NotificationEvent.JOINED,
-      userId: client.data.userId,
+      userId,
       role,
     };
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment */
   }
 
   @SubscribeMessage('notifications:mark-read')
   async handleMarkRead(
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: NotificationSocket,
     @MessageBody() body: { notificationId: number },
   ) {
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    const socketData = client.data as unknown as NotificationSocketData;
+
     return this.notificationsService.markAsRead(
       {
-        sub: client.data.userId as number,
-        role: client.data.role as NotificationRole,
+        sub: socketData.userId as number,
+        role: socketData.role as NotificationRole,
         email: '',
       },
       body.notificationId,
     );
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
   }
 }

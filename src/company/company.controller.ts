@@ -1,31 +1,41 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  UploadedFile,
-  UseInterceptors,
-  Req,
-  Query,
   ForbiddenException,
+  Get,
   NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { Request } from 'express';
-import { CompanyService } from './company.service.js';
-import { CreateCompanyDto } from './dto/create-company.dto.js';
-import { UpdateCompanyDto } from './dto/update-company.dto.js';
-import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiQuery,
 } from '@nestjs/swagger';
+import { Request } from 'express';
+import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
+import { imageUploadOptions } from '../upload/multer.options.js';
+import { CompanyService } from './company.service.js';
+import { CreateCompanyDto } from './dto/create-company.dto.js';
+import { UpdateCompanyDto } from './dto/update-company.dto.js';
+
+type CompanyRequestUser = {
+  sub?: number;
+  id?: number;
+  email?: string;
+  role?: string;
+};
 
 @Controller('companies')
 export class CompanyController {
@@ -33,21 +43,15 @@ export class CompanyController {
 
   @ApiOperation({ summary: 'Tạo company mới' })
   @ApiBody({ type: CreateCompanyDto })
-  // @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FileInterceptor('logo'))
   async create(
     @Req()
-    req: Request & { user?: { id: number; email: string; role: string } },
+    req: Request & { user?: CompanyRequestUser },
     @Body() dto: CreateCompanyDto,
     @UploadedFile() logo?: Express.Multer.File,
   ) {
-    // allow only admin or owner creation
     const user = req.user as { id: number; email: string; role: string };
-
-    // if (!user || (user.role !== 'ADMIN' && user.role !== 'EMPLOYEE')) {
-    //   throw new ForbiddenException('Không có quyền tạo company');
-    // }
     return this.companyService.create(dto, user, logo);
   }
 
@@ -74,11 +78,11 @@ export class CompanyController {
   async findOne(
     @Param('id') id: string,
     @Req()
-    req: Request & { user?: { id: number; email: string; role: string } },
+    req: Request & { user?: CompanyRequestUser },
   ) {
     const company = await this.companyService.findOne(
       Number(id),
-      req.user as any,
+      req.user ?? null,
     );
     if (!company) throw new NotFoundException('Company không tồn tại');
     return company;
@@ -90,10 +94,74 @@ export class CompanyController {
   async update(
     @Param('id') id: string,
     @Req()
-    req: Request & { user?: { id: number; email: string; role: string } },
+    req: Request & { user?: CompanyRequestUser },
     @Body() dto: UpdateCompanyDto,
   ) {
-    return this.companyService.update(Number(id), dto, req.user as any);
+    return this.companyService.update(Number(id), dto, req.user ?? null);
+  }
+
+  @ApiOperation({ summary: 'Tải logo công ty' })
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/logo')
+  @UseInterceptors(FileInterceptor('file', imageUploadOptions))
+  async uploadLogo(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req()
+    req: Request & { user?: CompanyRequestUser },
+  ) {
+    return this.companyService.uploadCompanyImage(
+      Number(id),
+      'company_image',
+      file,
+      req.user ?? null,
+    );
+  }
+
+  @ApiOperation({ summary: 'Tải ảnh bìa công ty' })
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/cover')
+  @UseInterceptors(FileInterceptor('file', imageUploadOptions))
+  async uploadCover(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req()
+    req: Request & { user?: CompanyRequestUser },
+  ) {
+    return this.companyService.uploadCompanyImage(
+      Number(id),
+      'cover_image',
+      file,
+      req.user ?? null,
+    );
   }
 
   @ApiOperation({ summary: 'Kích hoạt company' })
@@ -102,9 +170,9 @@ export class CompanyController {
   async activate(
     @Param('id') id: string,
     @Req()
-    req: Request & { user?: { id: number; email: string; role: string } },
+    req: Request & { user?: CompanyRequestUser },
   ) {
-    const user = req.user as { role: string } | undefined;
+    const user = req.user as { role?: string } | undefined;
     if (!user || user.role !== 'ADMIN')
       throw new ForbiddenException('Chỉ admin');
     return this.companyService.activate(Number(id));
@@ -117,9 +185,9 @@ export class CompanyController {
   async deactivate(
     @Param('id') id: string,
     @Req()
-    req: Request & { user?: { id: number; email: string; role: string } },
+    req: Request & { user?: CompanyRequestUser },
   ) {
-    const user = req.user as { role: string } | undefined;
+    const user = req.user as { role?: string } | undefined;
     if (!user || user.role !== 'ADMIN')
       throw new ForbiddenException('Chỉ admin');
     return this.companyService.deactivate(Number(id));
@@ -132,9 +200,9 @@ export class CompanyController {
   async remove(
     @Param('id') id: string,
     @Req()
-    req: Request & { user?: { id: number; email: string; role: string } },
+    req: Request & { user?: CompanyRequestUser },
   ) {
-    const user = req.user as { role: string } | undefined;
+    const user = req.user as { role?: string } | undefined;
     if (!user || user.role !== 'ADMIN')
       throw new ForbiddenException('Chỉ admin');
     return this.companyService.remove(Number(id));

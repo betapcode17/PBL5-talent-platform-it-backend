@@ -238,6 +238,46 @@ export class CompanyService {
     return updated;
   }
 
+  async uploadCompanyImage(
+    id: number,
+    field: 'company_image' | 'cover_image',
+    file: Express.Multer.File,
+    user: { sub?: number; role?: string } | null,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn ảnh để tải lên');
+    }
+
+    const company = await this.prisma.company.findUnique({
+      where: { company_id: id },
+    });
+    if (!company) {
+      throw new NotFoundException('Company không tồn tại');
+    }
+
+    const userId = typeof user?.sub === 'number' ? user.sub : undefined;
+    const isOwner = userId
+      ? await this.prisma.employee.findFirst({
+          where: { company_id: id, employee_id: userId },
+        })
+      : null;
+    if (!isOwner && user?.role !== 'ADMIN') {
+      throw new BadRequestException('Bạn không phải owner');
+    }
+
+    const { url } = await this.cloudinary.uploadAvatar(file);
+
+    await this.prisma.company.update({
+      where: { company_id: id },
+      data: { [field]: url },
+    });
+
+    return {
+      field,
+      imageUrl: url,
+    };
+  }
+
   async activate(id: number) {
     const company = await this.prisma.company.update({
       where: { company_id: id },
