@@ -46,15 +46,23 @@ export class MessageController {
 
   @Get()
   async getMessages(
+    @Req() req: { user: IUserPayload },
     @Query('chatId', ParseIntPipe) chatId: number,
     @Query('limit', ParseIntPipe) limit: number = 50,
     @Query('offset', ParseIntPipe) offset: number = 0,
   ) {
-    return this.messageService.getMessages(chatId, limit, offset);
+    return this.messageService.getMessages(chatId, limit, offset, req.user);
   }
 
   @Post('edit')
-  async editMessage(@Body() dto: EditMessageDto) {
-    return this.messageService.editMessage(dto.messageId, dto.newContent);
+  async editMessage(
+    @Req() req: { user: IUserPayload },
+    @Body() dto: EditMessageDto,
+  ) {
+    return this.messageService.editMessage(
+      dto.messageId,
+      dto.newContent,
+      req.user,
+    );
   }
 }

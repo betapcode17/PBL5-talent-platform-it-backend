@@ -21,6 +21,14 @@ type CategoryRecord = {
 export class JobTypesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private cachedJobTypes: Record<string, { data: any; expiry: number }> = {};
+  private cachedCategories: { data: CategoryRecord[]; expiry: number } | null = null;
+
+  public invalidateCache() {
+    this.cachedJobTypes = {};
+    this.cachedCategories = null;
+  }
+
   async createJobType(dto: CreateJobTypeDto) {
     await this.ensureJobTypeNameUnique(dto.name);
 
@@ -35,10 +43,17 @@ export class JobTypesService {
       },
     });
 
+    this.invalidateCache();
     return { typeId: created.job_type_id };
   }
 
   async getJobTypes(active?: boolean) {
+    const cacheKey = String(active);
+    const cached = this.cachedJobTypes[cacheKey];
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data;
+    }
+
     const types = await this.prisma.jobType.findMany({
       where: typeof active === 'boolean' ? { is_active: active } : undefined,
       orderBy: {
@@ -52,7 +67,7 @@ export class JobTypesService {
       },
     });
 
-    return {
+    const result = {
       types: types.map((type) => ({
         id: type.job_type_id,
         name: type.job_type,
@@ -60,6 +75,13 @@ export class JobTypesService {
         isActive: type.is_active,
       })),
     };
+
+    this.cachedJobTypes[cacheKey] = {
+      data: result,
+      expiry: Date.now() + 5 * 60 * 1000, // 5 minutes TTL
+    };
+
+    return result;
   }
 
   async updateJobType(id: number, dto: UpdateJobTypeDto) {
@@ -88,6 +110,7 @@ export class JobTypesService {
       },
     });
 
+    this.invalidateCache();
     return { updated: true };
   }
 
@@ -110,6 +133,7 @@ export class JobTypesService {
       },
     });
 
+    this.invalidateCache();
     return { message: 'Deleted' };
   }
 
@@ -131,6 +155,7 @@ export class JobTypesService {
       },
     });
 
+    this.invalidateCache();
     return { catId: created.category_id };
   }
 
@@ -139,20 +164,30 @@ export class JobTypesService {
       await this.ensureCategoryExists(parentId);
     }
 
-    const categories = await this.prisma.category.findMany({
-      where: {
-        is_active: true,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-      select: {
-        category_id: true,
-        name: true,
-        parent_category_id: true,
-        is_active: true,
-      },
-    });
+    let categories: CategoryRecord[];
+    if (this.cachedCategories && this.cachedCategories.expiry > Date.now()) {
+      categories = this.cachedCategories.data;
+    } else {
+      categories = await this.prisma.category.findMany({
+        where: {
+          is_active: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+        select: {
+          category_id: true,
+          name: true,
+          parent_category_id: true,
+          is_active: true,
+        },
+      });
+
+      this.cachedCategories = {
+        data: categories,
+        expiry: Date.now() + 5 * 60 * 1000, // 5 minutes TTL
+      };
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const categoriesTree = this.buildCategoryTree(categories, parentId ?? null);
@@ -201,6 +236,7 @@ export class JobTypesService {
       },
     });
 
+    this.invalidateCache();
     return { updated: true };
   }
 
@@ -231,6 +267,7 @@ export class JobTypesService {
       }),
     ]);
 
+    this.invalidateCache();
     return { message: 'Deleted' };
   }
 

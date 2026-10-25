@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
@@ -51,8 +52,25 @@ export class ChatController {
   }
 
   @Get('company/:id')
-  async getCompanyChat(@Param('id', ParseIntPipe) companyId: number) {
-    return this.chatService.getAllChatOfCompany(companyId);
+  async getCompanyChat(
+    @ReqUser() user: IUserPayload,
+    @Param('id', ParseIntPipe) companyId: number,
+  ) {
+    if (user.role === 'ADMIN') {
+      return this.chatService.getAllChatOfCompany(companyId);
+    }
+    if (user.role === 'EMPLOYEE') {
+      const userCompanyId = await this.chatService.getCompanyIdByEmployeeId(
+        user.sub,
+      );
+      if (userCompanyId !== companyId) {
+        throw new ForbiddenException('Bạn không thuộc công ty này');
+      }
+      return this.chatService.getAllChatOfCompany(companyId);
+    }
+    throw new ForbiddenException(
+      'Chỉ nhân viên công ty hoặc ADMIN mới có quyền truy cập',
+    );
   }
   @Get(':id')
   async getChatDetail(

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -53,11 +54,19 @@ export class CompanyService {
       ReturnType<PrismaService['user']['findUnique']>
     > | null = null;
     if (dto.ownerEmail) {
+      if (user?.role !== 'ADMIN' && (user as any)?.email && dto.ownerEmail !== (user as any).email) {
+        throw new ForbiddenException('Bạn chỉ có thể tạo công ty cho chính mình');
+      }
       ownerUser = await this.prisma.user.findUnique({
         where: { email: dto.ownerEmail },
       });
       if (!ownerUser)
         throw new BadRequestException('Owner email không tồn tại');
+    } else if (user?.sub || (user as any)?.id) {
+      const userId = user?.sub ?? (user as any)?.id;
+      ownerUser = await this.prisma.user.findUnique({
+        where: { user_id: userId },
+      });
     }
 
     // upload logo if provided (local save only)
@@ -151,7 +160,39 @@ export class CompanyService {
   async findOne(id: number, user: { sub?: number; role?: string } | null) {
     const company = await this.prisma.company.findUnique({
       where: { company_id: id },
-      include: { Employee: true, JobPost: true },
+      include: {
+        Employee: {
+          select: {
+            employee_id: true,
+            role: true,
+            joined_date: true,
+            User: {
+              select: {
+                full_name: true,
+                user_image: true,
+                email: true,
+              },
+            },
+          },
+        },
+        JobPost: {
+          where: { is_active: true },
+          take: 20,
+          orderBy: { created_date: 'desc' },
+          select: {
+            job_post_id: true,
+            name: true,
+            job_title: true,
+            salary: true,
+            work_location: true,
+            work_type: true,
+            level: true,
+            is_active: true,
+            created_date: true,
+            deadline: true,
+          },
+        },
+      },
     });
     if (!company) return null;
 

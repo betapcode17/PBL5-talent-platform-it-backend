@@ -42,7 +42,9 @@ export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
   @ApiOperation({ summary: 'Tạo company mới' })
+  @ApiBearerAuth()
   @ApiBody({ type: CreateCompanyDto })
+  @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FileInterceptor('logo'))
   async create(
@@ -51,7 +53,10 @@ export class CompanyController {
     @Body() dto: CreateCompanyDto,
     @UploadedFile() logo?: Express.Multer.File,
   ) {
-    const user = req.user as { id: number; email: string; role: string };
+    const user = req.user;
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'EMPLOYEE')) {
+      throw new ForbiddenException('Chỉ ADMIN hoặc EMPLOYEE mới có quyền tạo công ty');
+    }
     return this.companyService.create(dto, user, logo);
   }
 

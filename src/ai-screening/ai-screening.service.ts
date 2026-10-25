@@ -216,7 +216,7 @@ export type AiScreeningRunHooks = {
 export class AiScreeningService {
   private readonly logger = new Logger(AiScreeningService.name);
   private readonly ollamaUrl = 'http://localhost:11434/api/generate';
-  private readonly model = 'qwen2.5:7b';
+  private readonly model = 'qwen2.5:3b';
   private readonly jobCriteriaPromptVersion = 'jd-criteria-dynamic-weights-v1';
   private readonly judgeTimeoutMs = this.getPositiveIntegerEnv(
     'AI_SCREENING_JUDGE_TIMEOUT_MS',
@@ -463,7 +463,8 @@ export class AiScreeningService {
     });
 
     preparedCandidates.sort(
-      (first, second) => second.ruleResult.ruleScore - first.ruleResult.ruleScore,
+      (first, second) =>
+        second.ruleResult.ruleScore - first.ruleResult.ruleScore,
     );
 
     for (const [index, prepared] of preparedCandidates.entries()) {
@@ -653,21 +654,21 @@ export class AiScreeningService {
         },
         this.extractionTimeoutMs,
       );
-        const parsed = this.safeParseAiJson(response.data.response);
+      const parsed = this.safeParseAiJson(response.data.response);
 
-        if (!this.isRecord(parsed)) {
-          return this.getFallbackJobCriteria(jobDocument);
-        }
+      if (!this.isRecord(parsed)) {
+        return this.getFallbackJobCriteria(jobDocument);
+      }
 
-        return this.normalizeJobCriteria(parsed, jobDocument);
+      return this.normalizeJobCriteria(parsed, jobDocument);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown JD extraction error';
 
-        this.logger.warn(`JD extraction failed: ${message}`);
-        return this.getFallbackJobCriteria(jobDocument);
-      }
+      this.logger.warn(`JD extraction failed: ${message}`);
+      return this.getFallbackJobCriteria(jobDocument);
     }
+  }
 
   private async getJobCriteriaWithCache(
     jobPostId: number,
@@ -691,7 +692,10 @@ export class AiScreeningService {
       });
       if (cached && this.isRecord(cached.jobCriteria)) {
         return {
-          jobCriteria: this.normalizeJobCriteria(cached.jobCriteria, jobDocument),
+          jobCriteria: this.normalizeJobCriteria(
+            cached.jobCriteria,
+            jobDocument,
+          ),
           cacheStatus: 'hit',
         };
       }
@@ -768,9 +772,7 @@ export class AiScreeningService {
 
     for (const item of cvSkills) {
       const name = this.normalizeNullableString(item.name);
-      const months = this.normalizeNumericCriterionValue(
-        item.experienceMonths,
-      );
+      const months = this.normalizeNumericCriterionValue(item.experienceMonths);
 
       if (name && months !== null) {
         skillYears[name] = this.roundYears(months / 12);
@@ -848,17 +850,11 @@ export class AiScreeningService {
       null;
     const experienceEvidence = [
       ...cvExperiences.map((item) => ({
-        text: this.joinCandidateFields([
-          item.company,
-          item.description,
-        ]),
+        text: this.joinCandidateFields([item.company, item.description]),
         interval: this.toDateInterval(item.startDate, item.endDate),
       })),
       ...seekerExperiences.map((item) => ({
-        text: this.joinCandidateFields([
-          item.company_name,
-          item.description,
-        ]),
+        text: this.joinCandidateFields([item.company_name, item.description]),
         interval: this.toDateInterval(
           item.start_date,
           item.is_current_job ? new Date() : item.end_date,
@@ -951,10 +947,14 @@ export class AiScreeningService {
       strengths: this.uniqueStrings([
         ...this.splitCandidateList(profileSummary.strengths),
         ...cvPersonalities
-          .map((item) => this.joinCandidateFields([item.type, item.description]))
+          .map((item) =>
+            this.joinCandidateFields([item.type, item.description]),
+          )
           .filter((item): item is string => item !== null),
       ]),
-      careerGoals: this.normalizeNullableString(profileSummary.career_objective),
+      careerGoals: this.normalizeNullableString(
+        profileSummary.career_objective,
+      ),
       domainExperience:
         domainEvidence.length > 0
           ? domainEvidence
@@ -998,9 +998,8 @@ export class AiScreeningService {
     role: unknown,
     level: unknown,
   ): number | null {
-    const normalizedRequiredYears = this.normalizeNumericCriterionValue(
-      requiredYears,
-    );
+    const normalizedRequiredYears =
+      this.normalizeNumericCriterionValue(requiredYears);
 
     if (normalizedRequiredYears === null || normalizedRequiredYears <= 0) {
       return null;
@@ -1170,7 +1169,10 @@ export class AiScreeningService {
     const cleaned = Object.fromEntries(
       WEIGHT_KEYS.map((key) => {
         const value = Number(input?.[key] ?? 0);
-        return [key, Number.isFinite(value) ? Math.max(0, Math.min(value, 40)) : 0];
+        return [
+          key,
+          Number.isFinite(value) ? Math.max(0, Math.min(value, 40)) : 0,
+        ];
       }),
     ) as SuggestedWeights;
     const total = WEIGHT_KEYS.reduce((sum, key) => sum + cleaned[key], 0);
@@ -1185,14 +1187,11 @@ export class AiScreeningService {
         Math.floor(Math.min(40, (cleaned[key] / total) * 100)),
       ]),
     ) as SuggestedWeights;
-    let remaining = 100 - WEIGHT_KEYS.reduce(
-      (sum, key) => sum + normalized[key],
-      0,
-    );
+    let remaining =
+      100 - WEIGHT_KEYS.reduce((sum, key) => sum + normalized[key], 0);
     const distributionOrder = [...WEIGHT_KEYS].sort(
       (first, second) =>
-        cleaned[second] - cleaned[first] ||
-        fallback[second] - fallback[first],
+        cleaned[second] - cleaned[first] || fallback[second] - fallback[first],
     );
 
     while (remaining > 0) {
@@ -1478,7 +1477,11 @@ export class AiScreeningService {
     screeningMode: ScreeningMode = 'deep',
     judgeTopN: number | null = null,
   ): Promise<AiScreeningResult> {
-    const prompt = this.buildJudgePrompt(jobCriteria, candidateProfile, ruleResult);
+    const prompt = this.buildJudgePrompt(
+      jobCriteria,
+      candidateProfile,
+      ruleResult,
+    );
     const aiResult = await this.scoreCandidateByContext(
       jobDocument,
       candidateProfile.rawCandidateDocument,
@@ -1590,7 +1593,9 @@ export class AiScreeningService {
 
     const normalizedLlmScore = this.clampScore(llmScore);
 
-    return this.clampScore(normalizedRuleScore * 0.7 + normalizedLlmScore * 0.3);
+    return this.clampScore(
+      normalizedRuleScore * 0.7 + normalizedLlmScore * 0.3,
+    );
   }
 
   private buildRuleOnlyScreeningResult(
@@ -1744,10 +1749,7 @@ export class AiScreeningService {
           20,
         ),
         domainYears: domain
-          ? this.normalizeRequiredExperienceYears(
-              requiredYears.domainYears,
-              20,
-            )
+          ? this.normalizeRequiredExperienceYears(requiredYears.domainYears, 20)
           : null,
       },
       mainSkillKeywords,
@@ -1769,9 +1771,7 @@ export class AiScreeningService {
       ),
       certificates: this.normalizeStringArray(parsed.certificates),
       projectKeywords: this.normalizeStringArray(parsed.projectKeywords),
-      suggestedWeights: this.normalizeSuggestedWeights(
-        parsed.suggestedWeights,
-      ),
+      suggestedWeights: this.normalizeSuggestedWeights(parsed.suggestedWeights),
       weightReasoning: this.normalizeWeightReasoning(parsed.weightReasoning),
     };
   }
@@ -1958,7 +1958,10 @@ export class AiScreeningService {
       ['fullstack', ['fullstack', 'full-stack']],
       ['frontend', ['frontend', 'front-end', 'react', 'vue', 'angular']],
       ['mobile', ['mobile', 'flutter', 'react native', 'kotlin', 'swift']],
-      ['qa_automation', ['qa automation', 'automation tester', 'test automation']],
+      [
+        'qa_automation',
+        ['qa automation', 'automation tester', 'test automation'],
+      ],
       ['qa_manual', ['qa', 'tester', 'manual test']],
       ['data_engineer', ['data engineer']],
       ['data_analyst', ['data analyst', 'power bi']],
@@ -1973,14 +1976,7 @@ export class AiScreeningService {
       ['ui_ux', ['ui/ux', 'ui ux', 'ux designer', 'ui designer']],
       [
         'backend',
-        [
-          'backend',
-          'back-end',
-          'nestjs',
-          'spring boot',
-          'rest api',
-          'fastapi',
-        ],
+        ['backend', 'back-end', 'nestjs', 'spring boot', 'rest api', 'fastapi'],
       ],
     ];
 
@@ -2089,7 +2085,8 @@ export class AiScreeningService {
       return null;
     }
 
-    const timestamp = value instanceof Date ? value.getTime() : Date.parse(value);
+    const timestamp =
+      value instanceof Date ? value.getTime() : Date.parse(value);
 
     return Number.isFinite(timestamp) ? timestamp : null;
   }
@@ -2148,10 +2145,7 @@ export class AiScreeningService {
     return numericValues.length > 0 ? Math.max(...numericValues) : null;
   }
 
-  private textMatchesKeywords(
-    value: unknown,
-    keywords: string[],
-  ): boolean {
+  private textMatchesKeywords(value: unknown, keywords: string[]): boolean {
     if (typeof value !== 'string' || keywords.length === 0) {
       return false;
     }
@@ -2229,7 +2223,9 @@ export class AiScreeningService {
 
   buildJobDocument(job: any): string {
     const skills = Array.isArray(job.JobPostSkill)
-      ? job.JobPostSkill.map((item: any) => item.Skill?.skill_name).filter(Boolean)
+      ? job.JobPostSkill.map((item: any) => item.Skill?.skill_name).filter(
+          Boolean,
+        )
       : [];
 
     return [
@@ -2258,70 +2254,59 @@ export class AiScreeningService {
   buildCandidateDocument(activity: any): string {
     const seeker = activity.Seeker;
     const user = seeker?.User;
-    const cvSkills = this.mapItems(
-      seeker?.CvSkill,
-      (item) =>
-        [
-          item.name,
-          item.category,
-          item.experienceMonths ? `${item.experienceMonths} thang` : null,
-          item.isStrong ? 'the manh' : null,
-        ]
-          .filter(Boolean)
-          .join(' - '),
+    const cvSkills = this.mapItems(seeker?.CvSkill, (item) =>
+      [
+        item.name,
+        item.category,
+        item.experienceMonths ? `${item.experienceMonths} thang` : null,
+        item.isStrong ? 'the manh' : null,
+      ]
+        .filter(Boolean)
+        .join(' - '),
     );
     const seekerSkills = this.mapItems(
       seeker?.SeekerSkill,
       (item) =>
         `${item.Skill?.skill_name ?? ''}${item.experience_months ? ` (${item.experience_months} thang)` : ''}`,
     );
-    const cvExperiences = this.mapItems(
-      seeker?.CvExperience,
-      (item) =>
-        [
-          item.position,
-          item.company,
-          this.formatDateRange(item.startDate, item.endDate),
-          item.description,
-        ]
-          .filter(Boolean)
-          .join(' - '),
+    const cvExperiences = this.mapItems(seeker?.CvExperience, (item) =>
+      [
+        item.position,
+        item.company,
+        this.formatDateRange(item.startDate, item.endDate),
+        item.description,
+      ]
+        .filter(Boolean)
+        .join(' - '),
     );
-    const seekerExperiences = this.mapItems(
-      seeker?.SeekerExperience,
-      (item) =>
-        [
-          item.job_title,
-          item.company_name,
-          this.formatDateRange(item.start_date, item.end_date),
-          item.is_current_job ? 'Dang lam viec' : null,
-          item.description,
-        ]
-          .filter(Boolean)
-          .join(' - '),
+    const seekerExperiences = this.mapItems(seeker?.SeekerExperience, (item) =>
+      [
+        item.job_title,
+        item.company_name,
+        this.formatDateRange(item.start_date, item.end_date),
+        item.is_current_job ? 'Dang lam viec' : null,
+        item.description,
+      ]
+        .filter(Boolean)
+        .join(' - '),
     );
-    const cvEducations = this.mapItems(
-      seeker?.CvEducation,
-      (item) =>
-        [item.degree, item.major, item.school, item.description]
-          .filter(Boolean)
-          .join(' - '),
+    const cvEducations = this.mapItems(seeker?.CvEducation, (item) =>
+      [item.degree, item.major, item.school, item.description]
+        .filter(Boolean)
+        .join(' - '),
     );
-    const seekerEducations = this.mapItems(
-      seeker?.SeekerEducation,
-      (item) =>
-        [
-          item.certificate_degree_name,
-          item.major,
-          item.institute_university_name,
-          item.cgpa ? `GPA ${item.cgpa}` : null,
-        ]
-          .filter(Boolean)
-          .join(' - '),
+    const seekerEducations = this.mapItems(seeker?.SeekerEducation, (item) =>
+      [
+        item.certificate_degree_name,
+        item.major,
+        item.institute_university_name,
+        item.cgpa ? `GPA ${item.cgpa}` : null,
+      ]
+        .filter(Boolean)
+        .join(' - '),
     );
-    const cvCertificates = this.mapItems(
-      seeker?.CvCertificate,
-      (item) => [item.title, item.issuer].filter(Boolean).join(' - '),
+    const cvCertificates = this.mapItems(seeker?.CvCertificate, (item) =>
+      [item.title, item.issuer].filter(Boolean).join(' - '),
     );
     const seekerCertificates = this.mapItems(
       seeker?.SeekerCertificate,
@@ -2335,29 +2320,24 @@ export class AiScreeningService {
           .filter(Boolean)
           .join(' - '),
     );
-    const cvProjects = this.mapItems(
-      seeker?.CvProject,
-      (item) =>
-        [item.name, item.role, item.description, item.link]
-          .filter(Boolean)
-          .join(' - '),
+    const cvProjects = this.mapItems(seeker?.CvProject, (item) =>
+      [item.name, item.role, item.description, item.link]
+        .filter(Boolean)
+        .join(' - '),
     );
-    const seekerProjects = this.mapItems(
-      seeker?.SeekerProject,
-      (item) =>
-        [
-          item.project_name,
-          item.role,
-          item.technologies,
-          item.project_description,
-          item.project_url,
-        ]
-          .filter(Boolean)
-          .join(' - '),
+    const seekerProjects = this.mapItems(seeker?.SeekerProject, (item) =>
+      [
+        item.project_name,
+        item.role,
+        item.technologies,
+        item.project_description,
+        item.project_url,
+      ]
+        .filter(Boolean)
+        .join(' - '),
     );
-    const cvPersonalities = this.mapItems(
-      seeker?.CvPersonality,
-      (item) => [item.type, item.description].filter(Boolean).join(' - '),
+    const cvPersonalities = this.mapItems(seeker?.CvPersonality, (item) =>
+      [item.type, item.description].filter(Boolean).join(' - '),
     );
     const seekerPersonalities = this.mapItems(
       seeker?.SeekerPersonality,
@@ -2416,10 +2396,16 @@ export class AiScreeningService {
       return [];
     }
 
-    return items.map(mapper).map((item) => item.trim()).filter(Boolean);
+    return items
+      .map(mapper)
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
-  private formatDateRange(startDate?: Date | string | null, endDate?: Date | string | null) {
+  private formatDateRange(
+    startDate?: Date | string | null,
+    endDate?: Date | string | null,
+  ) {
     const start = this.formatDate(startDate);
     const end = this.formatDate(endDate);
 

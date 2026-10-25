@@ -301,7 +301,8 @@ export class ApplicationsService {
       this.prisma.jobPostActivity.count({ where }),
     ]);
 
-    await Promise.all(
+    // Gui thong bao CV viewed khong chan response va khong de loi thong bao gay 500 cho danh sach ung vien
+    Promise.allSettled(
       applications
         .filter((application) => Boolean(application.cv_url ?? application.Seeker.file_cv))
         .map((application) =>
@@ -323,7 +324,9 @@ export class ApplicationsService {
             12,
           ),
         ),
-    );
+    ).catch((err) => {
+      this.logger.warn(`Loi khi gui notification CV_VIEWED: ${err?.message}`);
+    });
 
     return {
       applications: applications.map((application) => {
@@ -502,6 +505,36 @@ export class ApplicationsService {
     await this.notifySeekerOnReject(application, reason);
 
     return { message: 'Rejected' };
+  }
+
+  async cancel(applicationId: number, userId: number) {
+    const seeker = await this.ensureSeekerProfile(userId);
+
+    const application = await this.prisma.jobPostActivity.findUnique({
+      where: { application_id: applicationId },
+      select: {
+        seeker_id: true,
+        status: true,
+      },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Application khong ton tai');
+    }
+
+    if (application.seeker_id !== seeker.seeker_id) {
+      throw new ForbiddenException('Ban khong co quyen huy application nay');
+    }
+
+    if (application.status !== ApplicationStatus.PENDING) {
+      throw new BadRequestException('Chi co the huy application khi dang o vong loai ho so');
+    }
+
+    await this.prisma.jobPostActivity.delete({
+      where: { application_id: applicationId },
+    });
+
+    return { message: 'Cancelled' };
   }
 
   private async ensureSeekerProfile(userId: number) {

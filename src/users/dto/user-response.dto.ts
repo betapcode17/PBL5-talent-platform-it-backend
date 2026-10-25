@@ -1,4 +1,4 @@
-import { UserRole } from '../../generated/prisma/enums.js';
+import { UserRole } from '../../generated/prisma/client.js';
 
 export class UserResponseDto {
   user_id: number;

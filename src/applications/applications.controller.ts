@@ -10,6 +10,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -174,5 +175,20 @@ export class ApplicationsController {
     @Body() dto: RejectApplicationDto,
   ) {
     return this.applicationsService.reject(applicationId, user.sub, dto);
+  }
+
+  @ApiOperation({ summary: 'Seeker huy application (khi o vong loai ho so)' })
+  @ApiParam({ name: 'id', example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: 'Application da bi huy',
+  })
+  @UseGuards(SeekerGuard)
+  @Delete(':id/cancel')
+  cancel(
+    @ReqUser() user: RequestUser,
+    @Param('id', ParseIntPipe) applicationId: number,
+  ) {
+    return this.applicationsService.cancel(applicationId, user.sub);
   }
 }

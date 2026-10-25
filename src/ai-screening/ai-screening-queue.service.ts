@@ -72,9 +72,7 @@ export class AiScreeningQueueService
       run = await this.prisma.aiScreeningRun.create({
         data: {
           jobPostId: jobId,
-          ...(dto.applicationId
-            ? { applicationId: dto.applicationId }
-            : {}),
+          ...(dto.applicationId ? { applicationId: dto.applicationId } : {}),
           employeeId: employee.employee_id,
           companyId: employee.company_id,
           mode,
@@ -124,7 +122,8 @@ export class AiScreeningQueueService
   }
 
   async getRunStatus(userId: number, runId: number) {
-    const employee = await this.aiScreeningService.validateEmployeeAccess(userId);
+    const employee =
+      await this.aiScreeningService.validateEmployeeAccess(userId);
     const run = await this.prisma.aiScreeningRun.findUnique({
       where: { id: runId },
     });
@@ -157,7 +156,8 @@ export class AiScreeningQueueService
   }
 
   async getActiveRun(userId: number) {
-    const employee = await this.aiScreeningService.validateEmployeeAccess(userId);
+    const employee =
+      await this.aiScreeningService.validateEmployeeAccess(userId);
     const run = await this.prisma.aiScreeningRun.findFirst({
       where: {
         companyId: employee.company_id,
@@ -191,7 +191,8 @@ export class AiScreeningQueueService
     const elapsedSeconds = run.startedAt
       ? Math.max(
           0,
-          ((run.completedAt?.getTime() ?? Date.now()) - run.startedAt.getTime()) /
+          ((run.completedAt?.getTime() ?? Date.now()) -
+            run.startedAt.getTime()) /
             1000,
         )
       : 0;
@@ -217,7 +218,10 @@ export class AiScreeningQueueService
       failedCount: run.failedCount,
       progressPercent:
         run.totalCount > 0
-          ? Math.min(100, Math.round((run.processedCount / run.totalCount) * 100))
+          ? Math.min(
+              100,
+              Math.round((run.processedCount / run.totalCount) * 100),
+            )
           : 0,
       startedAt: run.startedAt,
       completedAt: run.completedAt,
@@ -239,6 +243,7 @@ export class AiScreeningQueueService
 
     this.processing = true;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const pending = await this.prisma.aiScreeningRun.findFirst({
         where: { status: 'PENDING' },
         orderBy: { createdAt: 'asc' },
@@ -334,7 +339,9 @@ export class AiScreeningQueueService
         });
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Unknown queue processing error';
+          error instanceof Error
+            ? error.message
+            : 'Unknown queue processing error';
         this.logger.error(`AI screening run #${pending.id} failed: ${message}`);
         await this.prisma.aiScreeningRun.update({
           where: { id: pending.id },
