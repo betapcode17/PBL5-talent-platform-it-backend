@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { NotificationType } from '../generated/prisma/client.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -40,6 +41,19 @@ export class MessageService {
       throw new NotFoundException('Chat không tồn tại');
     }
 
+    if (senderType === 'SEEKER' && chat.seeker_id !== senderId) {
+      throw new ForbiddenException('Bạn không thuộc cuộc trò chuyện này');
+    }
+
+    if (senderType === 'EMPLOYEE') {
+      const employee = await this.prisma.employee.findUnique({
+        where: { employee_id: senderId },
+      });
+      if (!employee || employee.company_id !== chat.company_id) {
+        throw new ForbiddenException('Bạn không thuộc công ty trong cuộc trò chuyện này');
+      }
+    }
+
     // Update last_message_at and create message in transaction-like operation
     const [message] = await Promise.all([
       this.prisma.message.create({
@@ -75,9 +89,34 @@ export class MessageService {
     return message;
   }
 
-  async getMessages(chatId: number, limit: number = 50, offset: number = 0) {
+  async getMessages(
+    chatId: number,
+    limit: number = 50,
+    offset: number = 0,
+    user?: { sub: number; role: string },
+  ) {
     if (limit > 100) limit = 100; // Prevent excessive data fetching
     if (offset < 0) offset = 0;
+
+    if (user && user.role !== 'ADMIN') {
+      const chat = await this.prisma.chat.findUnique({
+        where: { chat_id: chatId },
+      });
+      if (!chat) {
+        throw new NotFoundException('Chat không tồn tại');
+      }
+      if (user.role === 'SEEKER' && chat.seeker_id !== user.sub) {
+        throw new ForbiddenException('Bạn không có quyền xem cuộc trò chuyện này');
+      }
+      if (user.role === 'EMPLOYEE') {
+        const employee = await this.prisma.employee.findUnique({
+          where: { employee_id: user.sub },
+        });
+        if (!employee || employee.company_id !== chat.company_id) {
+          throw new ForbiddenException('Bạn không có quyền xem cuộc trò chuyện này');
+        }
+      }
+    }
 
     const messages = await this.prisma.message.findMany({
       where: { chat_id: chatId },
@@ -94,22 +133,36 @@ export class MessageService {
       },
     });
 
-    // Bổ sung tên employee nếu sender_type là EMPLOYEE
-    return await Promise.all(
-      messages.map(async (msg) => {
-        if (msg.sender_type === 'EMPLOYEE') {
-          const employee = await this.prisma.employee.findUnique({
-            where: { employee_id: msg.sender_id },
-            select: {
-              employee_id: true,
-              User: { select: { full_name: true } },
-            },
-          });
-          return { ...msg, employee_name: employee?.User?.full_name || null };
-        }
-        return msg;
-      }),
+    // Bổ sung tên employee nếu sender_type là EMPLOYEE (Batch query tránh N+1)
+    const employeeIds = Array.from(
+      new Set(
+        messages
+          .filter((msg) => msg.sender_type === 'EMPLOYEE')
+          .map((msg) => msg.sender_id),
+      ),
     );
+
+    let employeeMap = new Map<number, string | null>();
+    if (employeeIds.length > 0) {
+      const employees = await this.prisma.employee.findMany({
+        where: { employee_id: { in: employeeIds } },
+        select: {
+          employee_id: true,
+          User: { select: { full_name: true } },
+        },
+      });
+      employeeMap = new Map(
+        employees.map((e) => [e.employee_id, e.User?.full_name || null]),
+      );
+    }
+
+    return messages.map((msg) => ({
+      ...msg,
+      employee_name:
+        msg.sender_type === 'EMPLOYEE'
+          ? employeeMap.get(msg.sender_id) || null
+          : null,
+    }));
   }
 
   async markAsRead(messageId: number) {
@@ -118,9 +171,22 @@ export class MessageService {
       data: { is_read: true },
     });
   }
-  async editMessage(messageId: number, newContent: string) {
+  async editMessage(
+    messageId: number,
+    newContent: string,
+    user?: { sub: number; role: string },
+  ) {
     if (newContent.trim().length === 0) {
       throw new BadRequestException('Nội dung tin nhắn không được để trống');
+    }
+    const message = await this.prisma.message.findUnique({
+      where: { message_id: messageId },
+    });
+    if (!message) {
+      throw new NotFoundException('Tin nhắn không tồn tại');
+    }
+    if (user && user.role !== 'ADMIN' && message.sender_id !== user.sub) {
+      throw new ForbiddenException('Bạn chỉ có thể chỉnh sửa tin nhắn của chính mình');
     }
     return this.prisma.message.update({
       where: { message_id: messageId },

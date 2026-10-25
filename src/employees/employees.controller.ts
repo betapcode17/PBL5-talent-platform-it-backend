@@ -9,12 +9,14 @@ import {
   Query,
   UseGuards,
   ForbiddenException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiBody, ApiOperation } from '@nestjs/swagger';
 import { EmployeesService } from './employees.service.js';
 import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
 import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
+import { AdminGuard } from '../job-types/guards/admin.guard.js';
 import { ReqUser } from '../common/decorators/req-user.decorator.js';
 
 interface IUserPayload {
@@ -115,14 +117,22 @@ export class EmployeesController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Get()
   findAll() {
     return this.employeesService.findAll();
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.employeesService.findOne(+id);
+  findOne(
+    @ReqUser() user: IUserPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    if (user.role !== 'ADMIN' && user.sub !== id) {
+      throw new ForbiddenException('Bạn không có quyền xem thông tin employee này');
+    }
+    return this.employeesService.findOne(id);
   }
 
   @ApiOperation({ summary: 'Cập nhật thông tin employee' })
@@ -138,16 +148,22 @@ export class EmployeesController {
       },
     },
   })
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @ReqUser() user: IUserPayload,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateEmployeeDto: UpdateEmployeeDto,
   ) {
-    return this.employeesService.update(+id, updateEmployeeDto);
+    if (user.role !== 'ADMIN' && user.sub !== id) {
+      throw new ForbiddenException('Bạn không có quyền sửa thông tin employee này');
+    }
+    return this.employeesService.update(id, updateEmployeeDto);
   }
 
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.employeesService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.employeesService.remove(id);
   }
 }

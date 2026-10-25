@@ -320,10 +320,12 @@ describe('AiScreeningService', () => {
         isFallback: false,
       }));
 
-    await expect(service.runAiScreeningForJob(1, 20, {
-      mode: 'deep',
-      judgeTopN: 2,
-    } as RunAiScreeningDto)).resolves.toEqual(
+    await expect(
+      service.runAiScreeningForJob(1, 20, {
+        mode: 'deep',
+        judgeTopN: 2,
+      } as RunAiScreeningDto),
+    ).resolves.toEqual(
       expect.objectContaining({
         screeningMode: 'deep',
         judgeTopN: 2,
@@ -353,7 +355,9 @@ describe('AiScreeningService', () => {
     ] as never);
     prisma.jobPostActivity.update.mockResolvedValue({} as never);
     const service = new AiScreeningService(prisma as never);
-    jest.spyOn(service, 'extractJobCriteria').mockResolvedValue(createJobCriteria());
+    jest
+      .spyOn(service, 'extractJobCriteria')
+      .mockResolvedValue(createJobCriteria());
     const judge = jest
       .spyOn(service, 'judgeCandidateWithLLM')
       .mockResolvedValue({
@@ -409,8 +413,8 @@ describe('AiScreeningService', () => {
         flags: [],
       }),
     );
-      expect(service.calculateFinalScore(80, 60)).toBe(74);
-      expect(service.calculateFinalScore(75, 0, 'failed')).toBe(75);
+    expect(service.calculateFinalScore(80, 60)).toBe(74);
+    expect(service.calculateFinalScore(75, 0, 'failed')).toBe(75);
     expect(service.classifyFitLabel(75)).toBe('MATCH');
   });
 
@@ -438,20 +442,18 @@ describe('AiScreeningService', () => {
     ] as never);
     prisma.jobPostActivity.update.mockResolvedValue({} as never);
     const service = new AiScreeningService(prisma as never);
-    jest
-      .spyOn(service, 'extractJobCriteria')
-      .mockResolvedValue(
-        createJobCriteria({
-          suggestedWeights: {
-            ...fallbackWeights,
-            mainTechnicalSkillYears: 40,
-          },
-          weightReasoning: {
-            ...createJobCriteria().weightReasoning,
-            mainTechnicalSkillYears: 'JD emphasizes TypeScript.',
-          },
-        }),
-      );
+    jest.spyOn(service, 'extractJobCriteria').mockResolvedValue(
+      createJobCriteria({
+        suggestedWeights: {
+          ...fallbackWeights,
+          mainTechnicalSkillYears: 40,
+        },
+        weightReasoning: {
+          ...createJobCriteria().weightReasoning,
+          mainTechnicalSkillYears: 'JD emphasizes TypeScript.',
+        },
+      }),
+    );
 
     jest.spyOn(service, 'scoreCandidateByContext').mockResolvedValue({
       score: 82,
@@ -747,7 +749,10 @@ describe('AiScreeningService', () => {
       'Java candidate profile',
       jobCriteria,
     );
-    const ruleResult = service.calculateRuleScore(jobCriteria, candidateProfile);
+    const ruleResult = service.calculateRuleScore(
+      jobCriteria,
+      candidateProfile,
+    );
     ruleResult.ruleScore = 80;
     ruleResult.flags = ['possibly_overqualified', 'missing_information'];
 
@@ -796,7 +801,10 @@ describe('AiScreeningService', () => {
     const service = new AiScreeningService(createPrisma() as never);
     const jobCriteria = createJobCriteria();
     const candidateProfile = service.extractCandidateProfile({}, 'candidate');
-    const ruleResult = service.calculateRuleScore(jobCriteria, candidateProfile);
+    const ruleResult = service.calculateRuleScore(
+      jobCriteria,
+      candidateProfile,
+    );
     ruleResult.ruleScore = 75;
 
     const result = await service.judgeCandidateWithLLM(
@@ -834,7 +842,10 @@ describe('AiScreeningService', () => {
     const service = new AiScreeningService(createPrisma() as never);
     const jobCriteria = createJobCriteria();
     const candidateProfile = service.extractCandidateProfile({}, 'candidate');
-    const ruleResult = service.calculateRuleScore(jobCriteria, candidateProfile);
+    const ruleResult = service.calculateRuleScore(
+      jobCriteria,
+      candidateProfile,
+    );
     ruleResult.ruleScore = 75;
 
     const result = await service.judgeCandidateWithLLM(
@@ -874,7 +885,10 @@ describe('AiScreeningService', () => {
     const service = new AiScreeningService(createPrisma() as never);
     const jobCriteria = createJobCriteria();
     const candidateProfile = service.extractCandidateProfile({}, 'candidate');
-    const ruleResult = service.calculateRuleScore(jobCriteria, candidateProfile);
+    const ruleResult = service.calculateRuleScore(
+      jobCriteria,
+      candidateProfile,
+    );
     ruleResult.ruleScore = 50;
     ruleResult.flags = ['underqualified', 'missing_information'];
 
@@ -1006,7 +1020,9 @@ describe('AiScreeningService', () => {
     expect(service.getExperienceExtraYears('frontend', 'senior')).toBe(2);
     expect(service.getExperienceExtraYears('Frontend', 'fresher')).toBe(0.5);
     expect(service.getExperienceExtraYears('backend', 'Senior')).toBe(3);
-    expect(service.getExperienceExtraYears('head_of_product', 'head')).toBeNull();
+    expect(
+      service.getExperienceExtraYears('head_of_product', 'head'),
+    ).toBeNull();
     expect(service.getExperienceExtraYears('missing_role', 'middle')).toBe(2);
     expect(service.getExperienceExtraYears('backend', 'manager')).toBe(2);
     expect(service.getExperienceExtraYears('backend', 'other')).toBe(2);
@@ -1034,12 +1050,7 @@ describe('AiScreeningService', () => {
       const service = new AiScreeningService(createPrisma() as never);
 
       expect(
-        service.scoreNumericCriterion(
-          candidateYears,
-          5,
-          'backend',
-          'senior',
-        ),
+        service.scoreNumericCriterion(candidateYears, 5, 'backend', 'senior'),
       ).toEqual({
         score,
         scorePercent,
@@ -1054,16 +1065,16 @@ describe('AiScreeningService', () => {
   it('handles missing, underqualified, skipped, and uncapped numeric criteria', () => {
     const service = new AiScreeningService(createPrisma() as never);
 
-    expect(
-      service.scoreNumericCriterion(null, 5, 'backend', 'senior'),
-    ).toEqual({
-      score: 0,
-      scorePercent: 0,
-      candidateValue: null,
-      requiredValue: 5,
-      maxFit: 8,
-      flags: ['missing_information'],
-    });
+    expect(service.scoreNumericCriterion(null, 5, 'backend', 'senior')).toEqual(
+      {
+        score: 0,
+        scorePercent: 0,
+        candidateValue: null,
+        requiredValue: 5,
+        maxFit: 8,
+        flags: ['missing_information'],
+      },
+    );
     expect(service.scoreNumericCriterion(2, 5, 'backend', 'senior')).toEqual({
       score: 0.25,
       scorePercent: 25,
@@ -1072,14 +1083,16 @@ describe('AiScreeningService', () => {
       maxFit: 8,
       flags: ['underqualified'],
     });
-    expect(service.scoreNumericCriterion(3, null, 'backend', 'senior')).toEqual({
-      score: null,
-      scorePercent: null,
-      candidateValue: 3,
-      requiredValue: null,
-      maxFit: null,
-      flags: [],
-    });
+    expect(service.scoreNumericCriterion(3, null, 'backend', 'senior')).toEqual(
+      {
+        score: null,
+        scorePercent: null,
+        candidateValue: 3,
+        requiredValue: null,
+        maxFit: null,
+        flags: [],
+      },
+    );
     expect(
       service.scoreNumericCriterion(4, 5, 'head_of_product', 'head'),
     ).toEqual({
@@ -1128,9 +1141,9 @@ describe('AiScreeningService', () => {
       englishEducationCertificate: 5,
       projectContest: 5,
     });
-    expect(Object.values(normalized).reduce((sum, value) => sum + value, 0)).toBe(
-      100,
-    );
+    expect(
+      Object.values(normalized).reduce((sum, value) => sum + value, 0),
+    ).toBe(100);
     expect(service.normalizeWeights()).toEqual(fallbackWeights);
     expect(
       service.normalizeWeights({
@@ -1157,9 +1170,9 @@ describe('AiScreeningService', () => {
     });
 
     expect(normalized.requiredSkills).toBe(13);
-    expect(Object.values(normalized).reduce((sum, value) => sum + value, 0)).toBe(
-      100,
-    );
+    expect(
+      Object.values(normalized).reduce((sum, value) => sum + value, 0),
+    ).toBe(100);
     expect(Math.max(...Object.values(normalized))).toBeLessThanOrEqual(40);
   });
 
@@ -1179,9 +1192,9 @@ describe('AiScreeningService', () => {
       projectContest: 0,
     });
 
-    expect(Object.values(normalized).reduce((sum, value) => sum + value, 0)).toBe(
-      100,
-    );
+    expect(
+      Object.values(normalized).reduce((sum, value) => sum + value, 0),
+    ).toBe(100);
     expect(Math.max(...Object.values(normalized))).toBeLessThanOrEqual(40);
     expect(Object.values(normalized).every((value) => value >= 0)).toBe(true);
   });
@@ -1204,9 +1217,9 @@ describe('AiScreeningService', () => {
       mainSkillYears: 8,
     };
 
-    expect(service.calculateRuleScore(criteria, candidateProfile).ruleScore).toBe(
-      100,
-    );
+    expect(
+      service.calculateRuleScore(criteria, candidateProfile).ruleScore,
+    ).toBe(100);
   });
 
   it('calculates Rule Score with normalized JD weights and exposes its breakdown', () => {
@@ -1867,11 +1880,10 @@ describe('AiScreeningService', () => {
 
     expect(extract).toHaveBeenCalledTimes(2);
     const cacheKeys = prisma.jobAiCriteriaCache.findUnique.mock.calls.map(
-      ([input]) => input.where.jobPostId_jobDocumentHash_modelVersion_promptVersion,
+      ([input]) =>
+        input.where.jobPostId_jobDocumentHash_modelVersion_promptVersion,
     );
-    expect(cacheKeys[0].jobDocumentHash).not.toBe(
-      cacheKeys[1].jobDocumentHash,
-    );
+    expect(cacheKeys[0].jobDocumentHash).not.toBe(cacheKeys[1].jobDocumentHash);
   });
 
   it('extracts candidate profile from PostgreSQL-backed relations', () => {
@@ -1928,9 +1940,7 @@ describe('AiScreeningService', () => {
           { degree: 'Bachelor', major: 'Computer Science', school: 'DUT' },
         ],
         SeekerEducation: [],
-        CvCertificate: [
-          { title: 'AWS Certified Developer', issuer: 'AWS' },
-        ],
+        CvCertificate: [{ title: 'AWS Certified Developer', issuer: 'AWS' }],
         SeekerCertificate: [
           {
             certificate_name: 'IELTS',
@@ -2017,18 +2027,14 @@ describe('AiScreeningService', () => {
     const application = {
       Seeker: {
         User: {},
-        CvExperience: [
-          { startDate: '2020-01-01', endDate: '2022-01-01' },
-        ],
+        CvExperience: [{ startDate: '2020-01-01', endDate: '2022-01-01' }],
         SeekerExperience: [
           { start_date: '2021-01-01', end_date: '2023-01-01' },
         ],
       },
     };
 
-    expect(
-      service.extractCandidateProfile(application, 'raw'),
-    ).toEqual(
+    expect(service.extractCandidateProfile(application, 'raw')).toEqual(
       expect.objectContaining({
         totalExperience: 3,
         mainSkillYears: null,

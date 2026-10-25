@@ -8,13 +8,29 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ];
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL.replace(/\/$/, ''));
+  }
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-    ], // frontend / swagger
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      try {
+        const hostname = new URL(origin).hostname;
+        if (allowedOrigins.includes(origin) || hostname.endsWith('.vercel.app')) {
+          return callback(null, true);
+        }
+      } catch {
+        // Fallback for non-standard origin URLs
+      }
+      return callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -38,6 +54,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(4000);
+  const port = process.env.PORT || 4000;
+  await app.listen(port);
+  console.log(`Backend application successfully running on port ${port}`);
 }
 bootstrap();

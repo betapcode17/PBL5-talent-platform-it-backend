@@ -9,7 +9,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { UserRole } from '../../generated/prisma/enums.js';
+import { UserRole } from '../../generated/prisma/client.js';
 
 const emptyToUndefined = ({ value }: { value: unknown }) =>
   value === '' ? undefined : value;

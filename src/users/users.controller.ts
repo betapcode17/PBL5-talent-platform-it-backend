@@ -5,12 +5,15 @@ import {
   UseGuards,
   Put,
   Patch,
+  Param,
+  ParseIntPipe,
   Query,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { JwtAuthGuard } from '../jwt/jwt-auth.guard.js';
+import { AdminGuard } from '../job-types/guards/admin.guard.js';
 import { ReqUser } from '../common/decorators/req-user.decorator.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import {
@@ -58,18 +61,21 @@ export class UsersController {
     return this.usersService.update(user.sub, dto);
   }
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(':id/active')
-  active(@Query('id') id: number) {
-    return this.usersService.activateUser(+id);
+  active(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.activateUser(id);
   }
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(':id/deactivate')
-  deactivate(@Query('id') id: number) {
-    return this.usersService.deactivateUser(+id);
+  deactivate(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.deactivateUser(id);
   }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Get()
   list(
     @Query('page') page = 1,

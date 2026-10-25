@@ -1,34 +1,43 @@
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Counter {
+  id  String @id @map("_id")
+  seq Int    @default(0)
 }
 
 model Token {
-  token_id   Int       @id @default(autoincrement())
+  token_id   Int       @id @default(0) @map("_id")
   user_id    Int
   token      String    @unique
   created_at DateTime  @default(now())
   expiresAt  DateTime?
   type       String    @default("REFRESH")
-  User       User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  User       User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model Category {
-  category_id        Int        @id @default(autoincrement())
+  category_id        Int        @id @default(0) @map("_id")
   name               String
   parent_category_id Int?
   is_active          Boolean    @default(true)
-  ParentCategory     Category?  @relation("CategoryHierarchy", fields: [parent_category_id], references: [category_id])
+  ParentCategory     Category?  @relation("CategoryHierarchy", fields: [parent_category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction)
   ChildCategories    Category[] @relation("CategoryHierarchy")
   JobPost            JobPost[]
+
+  @@index([is_active, name])
+  @@index([parent_category_id])
 }
 
 model Company {
-  company_id            Int                 @id @default(autoincrement())
+  company_id            Int                           @id @default(0) @map("_id")
   company_name          String
   profile_description   String?
   company_type          String?
@@ -46,8 +55,8 @@ model Company {
   cover_image           String?
   key_skills            String?
   why_love_working_here String?
-  is_active             Boolean             @default(true)
-  created_date          DateTime            @default(now())
+  is_active             Boolean                       @default(true)
+  created_date          DateTime                      @default(now())
   chats                 Chat[]
   CompanyFollow         CompanyFollow[]
   CompanySeekerLike     CompanySeekerLike[]
@@ -55,10 +64,15 @@ model Company {
   Employee              Employee[]
   JobPost               JobPost[]
   AiScreeningRun        AiScreeningRun[]
+
+  @@index([is_active, created_date(sort: Desc)])
+  @@index([company_name])
+  @@index([city])
+  @@index([company_industry])
 }
 
 model EmployerRegistrationRequest {
-  request_id             Int                               @id @default(autoincrement())
+  request_id             Int                               @id @default(0) @map("_id")
   full_name              String
   email                  String
   phone                  String
@@ -76,31 +90,31 @@ model EmployerRegistrationRequest {
   rejected_at            DateTime?
   created_date           DateTime                          @default(now())
   updated_date           DateTime                          @updatedAt
-  Company                Company?                          @relation(fields: [company_id], references: [company_id])
+  Company                Company?                          @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model CompanyFollow {
-  follow_id     Int      @id @default(autoincrement())
+  follow_id     Int      @id @default(0) @map("_id")
   seeker_id     Int
   company_id    Int
   followed_date DateTime @default(now())
   is_active     Boolean  @default(true)
-  Company       Company  @relation(fields: [company_id], references: [company_id])
-  Seeker        Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+  Company       Company  @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction)
+  Seeker        Seeker   @relation(fields: [seeker_id], references: [seeker_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([seeker_id, company_id])
 }
 
 model CompanySeekerLike {
-  company_seeker_like_id Int      @id @default(autoincrement())
+  company_seeker_like_id Int      @id @default(0) @map("_id")
   company_id             Int
   seeker_id              Int
   liked_by_employee_id   Int
   liked_date             DateTime @default(now())
   note                   String?
-  Company                Company  @relation(fields: [company_id], references: [company_id])
-  Employee               Employee @relation(fields: [liked_by_employee_id], references: [employee_id])
-  Seeker                 Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+  Company                Company  @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction)
+  Employee               Employee @relation(fields: [liked_by_employee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  Seeker                 Seeker   @relation(fields: [seeker_id], references: [seeker_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([company_id, seeker_id])
   @@index([company_id])
@@ -108,37 +122,39 @@ model CompanySeekerLike {
 }
 
 model Chat {
-  chat_id         Int       @id @default(autoincrement())
+  chat_id         Int       @id @default(0) @map("_id")
   seeker_id       Int
   created_date    DateTime  @default(now())
   last_message_at DateTime?
   company_id      Int
-  Company         Company   @relation(fields: [company_id], references: [company_id])
-  Seeker          Seeker    @relation(fields: [seeker_id], references: [seeker_id])
+  Company         Company   @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction)
+  Seeker          Seeker    @relation(fields: [seeker_id], references: [seeker_id], onDelete: NoAction, onUpdate: NoAction)
   Message         Message[]
 
   @@unique([seeker_id, company_id])
-  @@index([company_id])
-  @@index([seeker_id])
+  @@index([seeker_id, last_message_at(sort: Desc)])
+  @@index([company_id, last_message_at(sort: Desc)])
 }
 
 model Employee {
-  employee_id        Int                 @id
+  employee_id        Int                 @id @map("_id")
   company_id         Int
   role               String
   joined_date        DateTime?
   CompanySeekerLike  CompanySeekerLike[]
-  Company            Company             @relation(fields: [company_id], references: [company_id])
-  User               User                @relation(fields: [employee_id], references: [user_id])
+  Company            Company             @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction)
+  User               User                @relation(fields: [employee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   InterviewSchedule  InterviewSchedule[]
   AssignedInterviews Interview[]         @relation("InterviewAssignedEmployee")
   CreatedInterviews  Interview[]         @relation("InterviewCreatedByEmployee")
   JobPost            JobPost[]
   AiScreeningRun     AiScreeningRun[]
+
+  @@index([company_id])
 }
 
 model InterviewSchedule {
-  id                   Int             @id @default(autoincrement())
+  id                   Int             @id @default(0) @map("_id")
   job_post_activity_id Int
   seeker_id            Int
   employee_id          Int
@@ -152,13 +168,13 @@ model InterviewSchedule {
   note                 String?
   created_date         DateTime        @default(now())
   update_date          DateTime
-  Employee             Employee        @relation(fields: [employee_id], references: [employee_id])
-  JobPostActivity      JobPostActivity @relation(fields: [job_post_activity_id], references: [application_id])
-  Seeker               Seeker          @relation(fields: [seeker_id], references: [seeker_id])
+  Employee             Employee        @relation(fields: [employee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  JobPostActivity      JobPostActivity @relation(fields: [job_post_activity_id], references: [application_id], onDelete: NoAction, onUpdate: NoAction)
+  Seeker               Seeker          @relation(fields: [seeker_id], references: [seeker_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Interview {
-  interview_id   Int             @id @default(autoincrement())
+  interview_id   Int             @id @default(0) @map("_id")
   application_id Int
   seeker_id      Int
   interviewer_id Int
@@ -178,10 +194,10 @@ model Interview {
   completed_at   DateTime?
   created_date   DateTime        @default(now())
   updated_date   DateTime        @updatedAt
-  Application    JobPostActivity @relation("ApplicationInterviews", fields: [application_id], references: [application_id])
-  Seeker         Seeker          @relation(fields: [seeker_id], references: [seeker_id])
-  Interviewer    Employee        @relation("InterviewAssignedEmployee", fields: [interviewer_id], references: [employee_id])
-  CreatedBy      Employee        @relation("InterviewCreatedByEmployee", fields: [created_by_id], references: [employee_id])
+  Application    JobPostActivity @relation("ApplicationInterviews", fields: [application_id], references: [application_id], onDelete: NoAction, onUpdate: NoAction)
+  Seeker         Seeker          @relation(fields: [seeker_id], references: [seeker_id], onDelete: NoAction, onUpdate: NoAction)
+  Interviewer    Employee        @relation("InterviewAssignedEmployee", fields: [interviewer_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  CreatedBy      Employee        @relation("InterviewCreatedByEmployee", fields: [created_by_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([application_id])
   @@index([schedule])
@@ -193,18 +209,19 @@ model Interview {
 }
 
 model JobBookmark {
-  job_bookmark_id Int      @id @default(autoincrement())
+  job_bookmark_id Int      @id @default(0) @map("_id")
   seeker_id       Int
   job_post_id     Int
   bookmarked_date DateTime @default(now())
-  JobPost         JobPost  @relation(fields: [job_post_id], references: [job_post_id])
-  Seeker          Seeker   @relation(fields: [seeker_id], references: [seeker_id])
+  JobPost         JobPost  @relation(fields: [job_post_id], references: [job_post_id], onDelete: NoAction, onUpdate: NoAction)
+  Seeker          Seeker   @relation(fields: [seeker_id], references: [seeker_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([seeker_id, job_post_id])
+  @@index([job_post_id])
 }
 
 model JobPost {
-  job_post_id            Int               @id @default(autoincrement())
+  job_post_id            Int                  @id @default(0) @map("_id")
   employee_id            Int
   company_id             Int
   job_type_id            Int
@@ -224,22 +241,29 @@ model JobPost {
   salary                 String?
   number_of_hires        Int?
   deadline               DateTime?
-  created_date           DateTime          @default(now())
+  created_date           DateTime             @default(now())
   updated_date           DateTime
-  is_active              Boolean           @default(true)
+  is_active              Boolean              @default(true)
   JobBookmark            JobBookmark[]
-  Category               Category          @relation(fields: [category_id], references: [category_id])
-  Company                Company           @relation(fields: [company_id], references: [company_id])
-  Employee               Employee          @relation(fields: [employee_id], references: [employee_id])
-  JobType                JobType           @relation(fields: [job_type_id], references: [job_type_id])
+  Category               Category             @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction)
+  Company                Company              @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction)
+  Employee               Employee             @relation(fields: [employee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  JobType                JobType              @relation(fields: [job_type_id], references: [job_type_id], onDelete: NoAction, onUpdate: NoAction)
   JobPostActivity        JobPostActivity[]
   JobPostSkill           JobPostSkill[]
   AiScreeningRun         AiScreeningRun[]
   JobAiCriteriaCache     JobAiCriteriaCache[]
+
+  @@index([is_active, created_date(sort: Desc)])
+  @@index([created_date(sort: Desc)])
+  @@index([company_id, is_active])
+  @@index([category_id, is_active])
+  @@index([job_type_id, is_active])
+  @@index([employee_id])
 }
 
 model JobAiCriteriaCache {
-  id              Int      @id @default(autoincrement())
+  id              Int      @id @default(0) @map("_id")
   jobPostId       Int      @map("job_post_id")
   jobDocumentHash String   @map("job_document_hash")
   modelVersion    String   @map("model_version")
@@ -247,7 +271,7 @@ model JobAiCriteriaCache {
   jobCriteria     Json     @map("job_criteria")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
-  JobPost         JobPost  @relation(fields: [jobPostId], references: [job_post_id], onDelete: Cascade)
+  JobPost         JobPost  @relation(fields: [jobPostId], references: [job_post_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([jobPostId, jobDocumentHash, modelVersion, promptVersion])
   @@index([jobPostId])
@@ -255,7 +279,7 @@ model JobAiCriteriaCache {
 }
 
 model AiScreeningRun {
-  id                   Int                  @id @default(autoincrement())
+  id                   Int                  @id @default(0) @map("_id")
   jobPostId            Int                  @map("job_post_id")
   applicationId        Int?                 @map("application_id")
   employeeId           Int                  @map("employee_id")
@@ -276,12 +300,12 @@ model AiScreeningRun {
   saveDurationMs       Int                  @default(0) @map("save_duration_ms")
   startedAt            DateTime?            @map("started_at")
   completedAt          DateTime?            @map("completed_at")
-  errorMessage         String?              @map("error_message") @db.Text
+  errorMessage         String?              @map("error_message")
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
-  JobPost              JobPost              @relation(fields: [jobPostId], references: [job_post_id], onDelete: Cascade)
-  Employee             Employee             @relation(fields: [employeeId], references: [employee_id], onDelete: Cascade)
-  Company              Company              @relation(fields: [companyId], references: [company_id], onDelete: Cascade)
+  JobPost              JobPost              @relation(fields: [jobPostId], references: [job_post_id], onDelete: Cascade, onUpdate: NoAction)
+  Employee             Employee             @relation(fields: [employeeId], references: [employee_id], onDelete: Cascade, onUpdate: NoAction)
+  Company              Company              @relation(fields: [companyId], references: [company_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([status, createdAt])
   @@index([companyId])
@@ -291,7 +315,7 @@ model AiScreeningRun {
 }
 
 model JobPostActivity {
-  application_id    Int                 @id @default(autoincrement())
+  application_id    Int                 @id @default(0) @map("_id")
   seeker_id         Int
   job_post_id       Int
   apply_date        DateTime            @default(now())
@@ -303,7 +327,7 @@ model JobPostActivity {
   last_updated      DateTime
   ai_score          Float?
   ai_recommendation String?
-  ai_summary        String?             @db.Text
+  ai_summary        String?
   ai_strengths      Json?
   ai_concerns       Json?
   ai_screened_at    DateTime?
@@ -312,30 +336,33 @@ model JobPostActivity {
   ai_raw_result     Json?
   InterviewSchedule InterviewSchedule[]
   Interviews        Interview[]         @relation("ApplicationInterviews")
-  JobPost           JobPost             @relation(fields: [job_post_id], references: [job_post_id])
-  Seeker            Seeker              @relation(fields: [seeker_id], references: [seeker_id])
+  JobPost           JobPost             @relation(fields: [job_post_id], references: [job_post_id], onDelete: NoAction, onUpdate: NoAction)
+  Seeker            Seeker              @relation(fields: [seeker_id], references: [seeker_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([seeker_id, job_post_id])
   @@index([job_post_id])
   @@index([seeker_id])
   @@index([status])
+  @@index([apply_date(sort: Desc)])
 }
 
 model JobPostSkill {
+  id                    Int     @id @default(0) @map("_id")
   job_post_id           Int
   skill_id              Int
   required_level        String?
   min_experience_months Int?
   is_mandatory          Boolean @default(false)
   priority              Int?
-  JobPost               JobPost @relation(fields: [job_post_id], references: [job_post_id])
-  Skill                 Skill   @relation(fields: [skill_id], references: [skill_id])
+  JobPost               JobPost @relation(fields: [job_post_id], references: [job_post_id], onDelete: NoAction, onUpdate: NoAction)
+  Skill                 Skill   @relation(fields: [skill_id], references: [skill_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@id([job_post_id, skill_id])
+  @@unique([job_post_id, skill_id])
+  @@index([skill_id])
 }
 
 model JobType {
-  job_type_id Int       @id @default(autoincrement())
+  job_type_id Int       @id @default(0) @map("_id")
   job_type    String
   description String?
   is_active   Boolean   @default(true)
@@ -343,20 +370,20 @@ model JobType {
 }
 
 model Message {
-  message_id  Int        @id @default(autoincrement())
+  message_id  Int        @id @default(0) @map("_id")
   sender_id   Int
   content     String
   sent_at     DateTime   @default(now())
   is_read     Boolean    @default(false)
   chat_id     Int
   sender_type SenderType
-  Chat        Chat       @relation(fields: [chat_id], references: [chat_id])
+  Chat        Chat       @relation(fields: [chat_id], references: [chat_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([chat_id])
+  @@index([chat_id, sent_at(sort: Desc)])
 }
 
 model Seeker {
-  seeker_id            Int                   @id
+  seeker_id            Int                   @id @map("_id")
   file_cv              String?
   github_url           String?
   linkedin_url         String?
@@ -370,7 +397,7 @@ model Seeker {
   Interviews           Interview[]
   JobBookmark          JobBookmark[]
   JobPostActivity      JobPostActivity[]
-  User                 User                  @relation(fields: [seeker_id], references: [user_id])
+  User                 User                  @relation(fields: [seeker_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   CvEducation          CvEducation[]
   CvExperience         CvExperience[]
   CvSkill              CvSkill[]
@@ -380,7 +407,7 @@ model Seeker {
 }
 
 model CvEducation {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid()) @map("_id")
   userId      Int
   school      String
   degree      String
@@ -388,30 +415,30 @@ model CvEducation {
   startDate   DateTime
   endDate     DateTime?
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  Seeker      Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Seeker      Seeker    @relation(fields: [userId], references: [seeker_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([userId])
 }
 
 model CvExperience {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid()) @map("_id")
   userId      Int
   company     String
   position    String
   startDate   DateTime
   endDate     DateTime?
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  Seeker      Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Seeker      Seeker    @relation(fields: [userId], references: [seeker_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([userId])
 }
 
 model CvSkill {
-  id               String   @id @default(uuid())
+  id               String   @id @default(uuid()) @map("_id")
   userId           Int
   name             String
   category         String?
@@ -419,26 +446,26 @@ model CvSkill {
   isStrong         Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  Seeker           Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+  Seeker           Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([userId, name])
   @@index([userId])
 }
 
 model CvPersonality {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @map("_id")
   userId      Int
   type        String
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  Seeker      Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+  Seeker      Seeker   @relation(fields: [userId], references: [seeker_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([userId])
 }
 
 model CvCertificate {
-  id         String    @id @default(uuid())
+  id         String    @id @default(uuid()) @map("_id")
   userId     Int
   title      String
   issuer     String
@@ -446,13 +473,13 @@ model CvCertificate {
   fileUrl    String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
-  Seeker     Seeker    @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+  Seeker     Seeker    @relation(fields: [userId], references: [seeker_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([userId])
 }
 
 model CvProject {
-  id          String    @id @default(uuid())
+  id          String    @id @default(uuid()) @map("_id")
   userId      Int
   name        String
   description String?
@@ -462,40 +489,72 @@ model CvProject {
   endDate     DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  Seeker      Seeker    @relation(fields: [userId], references: [seeker_id], onDelete: Cascade)
+  Seeker      Seeker    @relation(fields: [userId], references: [seeker_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([userId])
 }
 
 model Skill {
-  skill_id     Int            @id @default(autoincrement())
+  skill_id     Int            @id @default(0) @map("_id")
   skill_name   String         @unique
   skill_type   SkillType
   created_date DateTime       @default(now())
   updated_date DateTime
   JobPostSkill JobPostSkill[]
+
+  @@index([skill_type])
 }
 
 model User {
-  user_id           Int       @id @default(autoincrement())
-  email             String    @unique
-  password          String
-  phone             String?
-  gender            String?
-  user_image        String?
-  role              UserRole
-  is_active         Boolean   @default(true)
-  registration_date DateTime  @default(now())
-  full_name         String?
-  Employee          Employee?
-  receivedNotifications Notification[] @relation("NotificationReceiver")
-  sentNotifications     Notification[] @relation("NotificationSender")
-  Seeker            Seeker?
-  tokens            Token[]
+  user_id               Int              @id @default(0) @map("_id")
+  email                 String           @unique
+  password              String
+  phone                 String?
+  gender                String?
+  user_image            String?
+  role                  UserRole
+  is_active             Boolean          @default(true)
+  registration_date     DateTime         @default(now())
+  full_name             String?
+  Employee              Employee?
+  receivedNotifications Notification[]   @relation("NotificationReceiver")
+  sentNotifications     Notification[]   @relation("NotificationSender")
+  Seeker                Seeker?
+  tokens                Token[]
+  AiConversation        AiConversation[]
+
+  @@index([role, is_active])
+  @@index([registration_date(sort: Desc)])
+}
+
+model AiConversation {
+  ai_conversation_id  Int                   @id @default(0) @map("_id")
+  user_id             Int
+  title               String?
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @updatedAt
+  User                User                  @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+  ConversationMessage ConversationMessage[]
+
+  @@index([user_id])
+  @@map("ai_conversations")
+}
+
+model ConversationMessage {
+  conversation_message_id Int              @id @default(0) @map("_id")
+  ai_conversation_id      Int
+  role                    ConversationRole
+  content                 String
+  metadata                Json?
+  created_at              DateTime         @default(now())
+  AiConversation          AiConversation   @relation(fields: [ai_conversation_id], references: [ai_conversation_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([ai_conversation_id, created_at])
+  @@map("conversation_messages")
 }
 
 model Notification {
-  notification_id Int              @id @default(autoincrement())
+  notification_id Int              @id @default(0) @map("_id")
   title           String
   message         String
   type            NotificationType
@@ -508,13 +567,19 @@ model Notification {
   metadata        Json?
   created_date    DateTime         @default(now())
   updated_date    DateTime         @updatedAt
-  Receiver        User             @relation("NotificationReceiver", fields: [receiver_id], references: [user_id], onDelete: Cascade)
-  Sender          User?            @relation("NotificationSender", fields: [sender_id], references: [user_id], onDelete: SetNull)
+  Receiver        User             @relation("NotificationReceiver", fields: [receiver_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+  Sender          User?            @relation("NotificationSender", fields: [sender_id], references: [user_id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([receiver_id, is_read, created_date(sort: Desc)])
   @@index([dedupe_key])
   @@index([role, created_date(sort: Desc)])
   @@index([type, created_date(sort: Desc)])
+}
+
+enum ConversationRole {
+  USER
+  ASSISTANT
+  SYSTEM
 }
 
 enum ApplicationStatus {

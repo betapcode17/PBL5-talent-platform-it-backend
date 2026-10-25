@@ -122,15 +122,9 @@ export class JobsService {
   }
 
   async getJobDetail(jobId: number) {
-    const job = await this.prisma.jobPost.findFirst({
+    const job = await this.prisma.jobPost.findUnique({
       where: {
         job_post_id: jobId,
-        is_active: true,
-        Company: {
-          is: {
-            is_active: true,
-          },
-        },
       },
       include: {
         Company: {
@@ -167,7 +161,7 @@ export class JobsService {
       },
     });
 
-    if (!job) {
+    if (!job || !job.is_active || job.Company?.is_active === false) {
       throw new NotFoundException('Job khong ton tai');
     }
 
@@ -250,11 +244,6 @@ export class JobsService {
 
     const where: Record<string, unknown> = {
       is_active: true,
-      Company: {
-        is: {
-          is_active: true,
-        },
-      },
     };
 
     const excludeAppliedFilter = this.buildExcludeAppliedFilter(
@@ -308,53 +297,86 @@ export class JobsService {
       ];
     }
 
-    const rawJobs = await this.prisma.jobPost.findMany({
-      where,
-      orderBy: { created_date: 'desc' },
-      select: {
-        job_post_id: true,
-        name: true,
-        job_title: true,
-        job_description: true,
-        candidate_requirements: true,
-        work_location: true,
-        work_type: true,
-        level: true,
-        salary: true,
-        is_active: true,
-        created_date: true,
-        Company: {
-          select: {
-            company_id: true,
-            company_name: true,
-            city: true,
+    if (categoryKeyword) {
+      where.Category = {
+        is: {
+          name: { contains: categoryKeyword, mode: 'insensitive' },
+        },
+      };
+    }
+
+    if (locationKeyword) {
+      const locCondition = [
+        { work_location: { contains: locationKeyword, mode: 'insensitive' } },
+        {
+          Company: {
+            is: { city: { contains: locationKeyword, mode: 'insensitive' } },
           },
         },
-        Category: {
-          select: {
-            category_id: true,
-            name: true,
+      ];
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, { OR: locCondition }];
+        delete where.OR;
+      } else {
+        where.OR = locCondition;
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [rawJobs, total] = await Promise.all([
+      this.prisma.jobPost.findMany({
+        where,
+        orderBy: { created_date: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          job_post_id: true,
+          name: true,
+          job_title: true,
+          job_description: true,
+          candidate_requirements: true,
+          work_location: true,
+          work_type: true,
+          level: true,
+          salary: true,
+          is_active: true,
+          created_date: true,
+          Company: {
+            select: {
+              company_id: true,
+              company_name: true,
+              city: true,
+            },
           },
-        },
-        JobType: {
-          select: {
-            job_type_id: true,
-            job_type: true,
+          Category: {
+            select: {
+              category_id: true,
+              name: true,
+            },
           },
-        },
-        JobPostSkill: {
-          select: {
-            Skill: {
-              select: {
-                skill_id: true,
-                skill_name: true,
-                skill_type: true,
+          JobType: {
+            select: {
+              job_type_id: true,
+              job_type: true,
+            },
+          },
+          JobPostSkill: {
+            take: 10,
+            select: {
+              Skill: {
+                select: {
+                  skill_id: true,
+                  skill_name: true,
+                  skill_type: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+      this.prisma.jobPost.count({ where }),
+    ]);
 
     const mapped = rawJobs.map((job) => {
       const salaryRange = this.extractSalaryRange(job.salary);
@@ -385,8 +407,6 @@ export class JobsService {
         company: job.Company,
         category: job.Category,
         jobType: job.JobType,
-        _categoryNameLower: categoryName.toLowerCase(),
-        _locationLower: location.toLowerCase(),
       };
     });
 
@@ -394,9 +414,6 @@ export class JobsService {
       salaryMinValue === null && salaryMaxValue === null
         ? mapped
         : mapped.filter((job) => {
-            // Filter by salary range
-            // If salaryMin provided: show jobs where min salary >= salaryMin
-            // If salaryMax provided: show jobs where max salary <= salaryMax
             const jobMinSalary = job.salaryRange.min ?? null;
             const jobMaxSalary = job.salaryRange.max ?? null;
 
@@ -406,31 +423,39 @@ export class JobsService {
 
             let matchesSalaryMin = true;
             if (salaryMinValue !== null) {
-              // Job's minimum salary must be at least salaryMin
               matchesSalaryMin = jobMinSalary >= salaryMinValue;
             }
 
             let matchesSalaryMax = true;
             if (salaryMaxValue !== null) {
-              // Job's maximum salary must be at most salaryMax
               matchesSalaryMax = jobMaxSalary <= salaryMaxValue;
             }
 
             return matchesSalaryMin && matchesSalaryMax;
           });
 
+    const defaultLocations = [
+      'Hồ Chí Minh',
+      'Hà Nội',
+      'Đà Nẵng',
+      'Cần Thơ',
+      'Remote',
+      'Hybrid',
+    ];
+
+    const locations = Array.from(
+      new Set([
+        ...salaryFiltered
+          .map((job) => job.location)
+          .filter((name): name is string => Boolean(name)),
+        ...defaultLocations,
+      ]),
+    ).sort((a, b) => a.localeCompare(b));
+
     const categories = Array.from(
       new Set(
         salaryFiltered
           .map((job) => job.category?.name)
-          .filter((name): name is string => Boolean(name)),
-      ),
-    ).sort((a, b) => a.localeCompare(b));
-
-    const locations = Array.from(
-      new Set(
-        salaryFiltered
-          .map((job) => job.location)
           .filter((name): name is string => Boolean(name)),
       ),
     ).sort((a, b) => a.localeCompare(b));
@@ -447,63 +472,17 @@ export class JobsService {
       count: jobTypeCounts.get(value) ?? 0,
     }));
 
-    const programmingLanguages = Array.from(
-      salaryFiltered
-        .reduce((counts, job) => {
-          const uniqueSkills = new Set(job.skills);
-
-          uniqueSkills.forEach((skill) => {
-            counts.set(skill, (counts.get(skill) ?? 0) + 1);
-          });
-
-          return counts;
-        }, new Map<string, number>())
-        .entries(),
-    )
-      .map(([value, count]) => ({
-        label: value,
-        value,
-        count,
-      }))
-      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-
-    const categoryTerm = categoryKeyword?.toLowerCase();
-    const locationTerm = locationKeyword?.toLowerCase();
-
-    const filtered = salaryFiltered.filter((job) => {
-      const matchCategory = categoryTerm
-        ? job._categoryNameLower.includes(categoryTerm)
-        : true;
-
-      const matchLocation = locationTerm
-        ? job._locationLower.includes(locationTerm)
-        : true;
-
-      return matchCategory && matchLocation;
-    });
-
-    const total = filtered.length;
-    const skip = (page - 1) * limit;
+    const programmingLanguages = KNOWN_TECH_KEYWORDS.map((skill) => ({
+      label: skill,
+      value: skill,
+      count: salaryFiltered.filter((job) => job.skills.includes(skill)).length,
+    }));
 
     return {
-      jobs: filtered.slice(skip, skip + limit).map((job) => ({
-        id: job.id,
-        title: job.title,
-        description: job.description,
-        requirements: job.requirements,
-        salary: job.salary,
-        salaryRange: job.salaryRange,
-        location: job.location,
-        workType: job.workType,
-        level: job.level,
-        skills: job.skills,
-        isActive: job.isActive,
-        createdDate: job.createdDate,
-        company: job.company,
-        category: job.category,
-        jobType: job.jobType,
-      })),
+      jobs: salaryFiltered,
       total,
+      page,
+      limit,
       filters: {
         categories,
         locations,
@@ -539,7 +518,6 @@ export class JobsService {
     const where: {
       company_id: number;
       is_active?: boolean;
-      Company?: { is: { is_active: boolean } };
     } = {
       company_id: companyId,
     };
@@ -548,15 +526,11 @@ export class JobsService {
       where.is_active = active;
     }
 
-    if (active === true) {
-      if (!company.is_active) {
-        return {
-          jobs: [],
-          total: 0,
-        };
-      }
-
-      where.Company = { is: { is_active: true } };
+    if (active === true && !company.is_active) {
+      return {
+        jobs: [],
+        total: 0,
+      };
     }
 
     const [jobs, total] = await Promise.all([
@@ -1046,7 +1020,6 @@ export class JobsService {
 
     const where: {
       is_active?: boolean;
-      Company: { is: { is_active: boolean } };
       JobPostActivity?: {
         none: {
           seeker_id: number;
@@ -1054,11 +1027,6 @@ export class JobsService {
       };
     } = {
       is_active: true,
-      Company: {
-        is: {
-          is_active: true,
-        },
-      },
     };
 
     const excludeAppliedFilter = this.buildExcludeAppliedFilter(
