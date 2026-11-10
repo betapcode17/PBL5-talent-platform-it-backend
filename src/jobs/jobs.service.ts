@@ -26,12 +26,42 @@ const KNOWN_TECH_KEYWORDS = [
   'Figma',
 ];
 
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
 @Injectable()
 export class JobsService {
+  private readonly searchCache = new Map<string, CacheEntry<unknown>>();
+  private readonly CACHE_TTL_MS = 60000; // 60 seconds fast in-memory cache
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
   ) {}
+
+  private getFromCache<T>(key: string): T | null {
+    const entry = this.searchCache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      this.searchCache.delete(key);
+      return null;
+    }
+    return entry.data as T;
+  }
+
+  private setCache<T>(key: string, data: T, ttlMs = this.CACHE_TTL_MS): void {
+    if (this.searchCache.size > 150) {
+      const oldestKey = this.searchCache.keys().next().value;
+      if (oldestKey) this.searchCache.delete(oldestKey);
+    }
+    this.searchCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  }
+
+  public clearSearchCache(): void {
+    this.searchCache.clear();
+  }
 
   private buildExcludeAppliedFilter(
     excludeApplied: boolean | undefined,
@@ -118,6 +148,7 @@ export class JobsService {
       },
     });
 
+    this.clearSearchCache();
     return { jobId: created.job_post_id };
   }
 
@@ -210,6 +241,12 @@ export class JobsService {
     query: SearchJobsQueryDto,
     user?: { sub: number; role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN' },
   ) {
+    const cacheKey = `search_${JSON.stringify(query)}_${user ? user.sub : 'anon'}`;
+    const cached = this.getFromCache<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const keyword = query.q?.trim();
     const categoryKeyword = query.category?.trim();
     const locationKeyword = query.location?.trim();
@@ -478,7 +515,7 @@ export class JobsService {
       count: salaryFiltered.filter((job) => job.skills.includes(skill)).length,
     }));
 
-    return {
+    const result = {
       jobs: salaryFiltered,
       total,
       page,
@@ -490,6 +527,9 @@ export class JobsService {
         programmingLanguages,
       },
     };
+
+    this.setCache(cacheKey, result);
+    return result;
   }
 
   async getCompanyJobs(
@@ -817,6 +857,7 @@ export class JobsService {
       .split('-')
       .map((value) => Number(value.trim()));
 
+    this.clearSearchCache();
     return {
       id: updated.job_post_id,
       title: updated.job_title || updated.name,
@@ -883,6 +924,7 @@ export class JobsService {
       },
     });
 
+    this.clearSearchCache();
     return {
       message: 'Deleted',
       jobId,
@@ -930,6 +972,7 @@ export class JobsService {
       },
     });
 
+    this.clearSearchCache();
     return { message: 'Activated' };
   }
 
@@ -973,6 +1016,7 @@ export class JobsService {
       },
     });
 
+    this.clearSearchCache();
     return { message: 'Deactivated' };
   }
 
@@ -1010,6 +1054,12 @@ export class JobsService {
     excludeApplied: boolean | undefined,
     user?: { sub: number; role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN' },
   ) {
+    const cacheKey = `all_${page}_${limit}_${active}_${excludeApplied}_${user?.sub || 'anon'}`;
+    const cached = this.getFromCache<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     if (page < 1) {
       throw new BadRequestException('page phai >= 1');
     }
@@ -1077,7 +1127,7 @@ export class JobsService {
       this.prisma.jobPost.count({ where }),
     ]);
 
-    return {
+    const result = {
       jobs: jobs.map((job) => ({
         id: job.job_post_id,
         title: job.job_title || job.name,
@@ -1096,5 +1146,8 @@ export class JobsService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+
+    this.setCache(cacheKey, result);
+    return result;
   }
 }
