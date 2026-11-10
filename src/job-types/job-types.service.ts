@@ -196,6 +196,67 @@ export class JobTypesService {
     return { categories: categoriesTree };
   }
 
+  private cachedFeatured: { data: any[]; expiry: number } | null = null;
+
+  async getFeaturedCategories() {
+    if (this.cachedFeatured && this.cachedFeatured.expiry > Date.now()) {
+      return this.cachedFeatured.data;
+    }
+
+    const featureDefinitions = [
+      { id: 'frontend', title: 'Frontend', kw: ['frontend', 'react', 'vue', 'angular', 'ui/ux'] },
+      { id: 'backend', title: 'Backend', kw: ['backend', 'node', 'nest', 'java', 'golang', 'python', '.net', 'c#', 'php'] },
+      { id: 'fullstack', title: 'Fullstack', kw: ['fullstack', 'full-stack', 'full stack'] },
+      { id: 'ai-ml', title: 'AI & Machine Learning', kw: ['ai', 'machine learning', 'deep learning', 'nlp', 'data science', 'llm'] },
+      { id: 'mobile', title: 'Mobile (iOS & Android)', kw: ['mobile', 'android', 'ios', 'flutter', 'react native'] },
+      { id: 'devops-cloud', title: 'DevOps & Cloud', kw: ['devops', 'cloud', 'aws', 'azure', 'docker', 'kubernetes', 'sre'] },
+      { id: 'data-engineering', title: 'Data & Analytics', kw: ['data', 'analytics', 'bi', 'big data', 'database'] },
+      { id: 'cybersecurity', title: 'Cybersecurity', kw: ['security', 'cyber', 'soc', 'pentest', 'bảo mật'] },
+    ];
+
+    const jobs = await this.prisma.jobPost.findMany({
+      where: { is_active: true },
+      select: {
+        job_post_id: true,
+        name: true,
+        job_title: true,
+        Category: { select: { name: true } },
+        JobPostSkill: { select: { Skill: { select: { skill_name: true } } } },
+      },
+    });
+
+    const results = featureDefinitions.map((c) => {
+      const matched = jobs.filter((j) => {
+        const text = [
+          j.name,
+          j.job_title,
+          j.Category?.name,
+          ...(j.JobPostSkill?.map((s) => s.Skill?.skill_name) || []),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return c.kw.some((k) => text.includes(k));
+      });
+
+      const count = matched.length;
+      return {
+        id: c.id,
+        title: c.title,
+        count,
+        openRoles: `${count.toLocaleString()}+ Open Positions`,
+      };
+    });
+
+    this.cachedFeatured = {
+      data: results,
+      expiry: Date.now() + 5 * 60 * 1000,
+    };
+
+    return results;
+  }
+
   async updateCategory(id: number, dto: UpdateCategoryDto) {
     const existing = await this.prisma.category.findUnique({
       where: { category_id: id },

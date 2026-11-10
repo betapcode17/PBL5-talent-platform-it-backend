@@ -124,37 +124,135 @@ export class CompanyService {
       is_active: true,
     };
 
-    // filter industry (insensitive)
+    // filter industry (insensitive & alias support)
     if (opts.industry) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      where.company_industry = { contains: opts.industry, mode: 'insensitive' };
+      const ind = opts.industry.trim();
+      if (/fintech|tài chính/i.test(ind)) {
+        where.OR = [
+          { company_industry: { contains: 'Finan', mode: 'insensitive' } },
+          { company_industry: { contains: 'Tài chính', mode: 'insensitive' } },
+          { company_industry: { contains: 'Fintech', mode: 'insensitive' } },
+        ];
+      } else if (/công nghệ thông tin/i.test(ind)) {
+        where.OR = [
+          { company_industry: { contains: 'Công nghệ thông tin', mode: 'insensitive' } },
+          { company_industry: { contains: 'IT', mode: 'insensitive' } },
+          { company_industry: { contains: 'Phần mềm', mode: 'insensitive' } },
+          { company_industry: { contains: 'Technology', mode: 'insensitive' } },
+        ];
+      } else if (/phần mềm|gia công/i.test(ind)) {
+        where.OR = [
+          { company_industry: { contains: 'Phần mềm', mode: 'insensitive' } },
+          { company_industry: { contains: 'IT', mode: 'insensitive' } },
+          { company_industry: { contains: 'Gia công', mode: 'insensitive' } },
+        ];
+      } else if (/trí tuệ nhân tạo|ai/i.test(ind)) {
+        where.OR = [
+          { company_industry: { contains: 'Trí tuệ nhân tạo', mode: 'insensitive' } },
+          { company_industry: { contains: 'AI', mode: 'insensitive' } },
+          { company_name: { contains: 'AI', mode: 'insensitive' } },
+          { key_skills: { contains: 'AI', mode: 'insensitive' } },
+        ];
+      } else if (/thương mại điện tử|e-commerce/i.test(ind)) {
+        where.OR = [
+          { company_industry: { contains: 'Thương mại điện tử', mode: 'insensitive' } },
+          { company_industry: { contains: 'E-commerce', mode: 'insensitive' } },
+          { company_industry: { contains: 'Ecommerce', mode: 'insensitive' } },
+          { company_industry: { contains: 'Retail', mode: 'insensitive' } },
+        ];
+      } else {
+        where.company_industry = { contains: ind, mode: 'insensitive' };
+      }
     }
 
     // filter text search
     if (opts.q) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      where.OR = [
+      const qCondition = [
         { company_name: { contains: opts.q, mode: 'insensitive' } },
         { profile_description: { contains: opts.q, mode: 'insensitive' } },
         { city: { contains: opts.q, mode: 'insensitive' } },
         { country: { contains: opts.q, mode: 'insensitive' } },
         { key_skills: { contains: opts.q, mode: 'insensitive' } },
       ];
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, { OR: qCondition }];
+        delete where.OR;
+      } else {
+        where.OR = qCondition;
+      }
     }
 
     const [companies, total] = await Promise.all([
       this.prisma.company.findMany({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         where,
         skip,
         take: pageSize,
-        orderBy: { created_date: 'desc' },
+        orderBy: [
+          { JobPost: { _count: 'desc' } },
+          { created_date: 'desc' },
+        ],
+        include: {
+          _count: {
+            select: {
+              JobPost: {
+                where: { is_active: true },
+              },
+            },
+          },
+        },
       }),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       this.prisma.company.count({ where }),
     ]);
 
     return { companies, total };
+  }
+
+  async getTopCompanies(limit: number = 5) {
+    const companies = await this.prisma.company.findMany({
+      where: {
+        is_active: true,
+        JobPost: { some: { is_active: true } },
+      },
+      take: limit,
+      orderBy: {
+        JobPost: { _count: 'desc' },
+      },
+      select: {
+        company_id: true,
+        company_name: true,
+        company_image: true,
+        city: true,
+        company_industry: true,
+        _count: {
+          select: {
+            JobPost: { where: { is_active: true } },
+          },
+        },
+      },
+    });
+
+    const logoTones = [
+      'from-amber-200 to-yellow-300',
+      'from-emerald-950 to-teal-900',
+      'from-slate-100 to-stone-200',
+      'from-orange-100 to-red-200',
+      'from-lime-100 to-emerald-200',
+    ];
+
+    return companies.map((c, i) => ({
+      id: String(c.company_id),
+      name: c.company_name,
+      jobsCount: c._count.JobPost,
+      logoText: c.company_name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w: string) => w[0]?.toUpperCase() ?? '')
+        .join('') || 'CP',
+      logoTone: logoTones[i % logoTones.length],
+      companyImage: c.company_image,
+      city: c.city,
+    }));
   }
 
   async findOne(id: number, user: { sub?: number; role?: string } | null) {

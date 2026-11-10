@@ -52,6 +52,12 @@ export class CategoriesController {
     return this.jobTypesService.getCategories(query.parentId);
   }
 
+  @ApiOperation({ summary: 'Lay danh sach 8 featured categories voi so luong job thuc te' })
+  @Get('featured')
+  getFeaturedCategories() {
+    return this.jobTypesService.getFeaturedCategories();
+  }
+
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cap nhat category (ADMIN)' })
   @ApiBody({ type: UpdateCategoryDto })

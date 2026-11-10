@@ -78,6 +78,13 @@ export class CompanyController {
     return this.companyService.findAll({ page: pageNum, industry, q });
   }
 
+  @ApiOperation({ summary: 'Lấy top companies có nhiều việc làm nhất' })
+  @Get('top')
+  async getTopCompanies(@Query('limit') limit = '5') {
+    const limitNum = Math.min(20, Math.max(1, Number(limit) || 5));
+    return this.companyService.getTopCompanies(limitNum);
+  }
+
   @ApiOperation({ summary: 'Lấy chi tiết company' })
   @Get(':id')
   async findOne(
