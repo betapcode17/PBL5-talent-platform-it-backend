@@ -40,8 +40,14 @@ export class AuthService {
     private notificationsService: NotificationsService,
   ) {}
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    const normalizedEmail = dto.email?.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
       include: {
         Employee: {
           include: {
