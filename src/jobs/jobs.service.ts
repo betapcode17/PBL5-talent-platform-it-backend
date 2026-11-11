@@ -241,6 +241,12 @@ export class JobsService {
     query: SearchJobsQueryDto,
     user?: { sub: number; role: 'SEEKER' | 'EMPLOYEE' | 'ADMIN' },
   ) {
+    if (query.q && query.q.length > 100) {
+      throw new BadRequestException(
+        'Từ khóa tìm kiếm không được vượt quá 100 ký tự',
+      );
+    }
+
     const cacheKey = `search_${JSON.stringify(query)}_${user ? user.sub : 'anon'}`;
     const cached = this.getFromCache<any>(cacheKey);
     if (cached) {

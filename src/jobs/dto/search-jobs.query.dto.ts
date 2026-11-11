@@ -1,10 +1,23 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class SearchJobsQueryDto {
-  @ApiPropertyOptional({ example: 'frontend', description: 'Tu khoa tim kiem' })
-  @IsString()
+  @ApiPropertyOptional({
+    example: 'frontend',
+    description: 'Tu khoa tim kiem (toi da 100 ky tu)',
+    maxLength: 100,
+  })
+  @IsString({ message: 'Từ khóa tìm kiếm phải là chuỗi ký tự' })
+  @MaxLength(100, { message: 'Từ khóa tìm kiếm không được vượt quá 100 ký tự' })
   @IsOptional()
   q?: string;
 

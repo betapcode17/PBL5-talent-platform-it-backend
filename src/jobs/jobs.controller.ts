@@ -69,7 +69,12 @@ export class JobsController {
   }
 
   @ApiOperation({ summary: 'Tim kiem jobs (Auth optional)' })
-  @ApiQuery({ name: 'q', required: false, example: 'frontend' })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    example: 'frontend',
+    description: 'Từ khóa tìm kiếm (tối đa 100 ký tự)',
+  })
   @ApiQuery({ name: 'category', required: false, example: 'web' })
   @ApiQuery({ name: 'location', required: false, example: 'HN' })
   @ApiQuery({ name: 'salaryMin', required: false, example: '10M' })
@@ -151,7 +156,9 @@ export class JobsController {
     return this.jobsService.getJobDetail(id);
   }
 
-  @ApiOperation({ summary: 'Cap nhat job post theo id (yeu cau token recruiter)' })
+  @ApiOperation({
+    summary: 'Cap nhat job post theo id (yeu cau token recruiter)',
+  })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @ApiBearerAuth()
   @ApiBody({
@@ -184,19 +191,20 @@ export class JobsController {
     return this.jobsService.updateJob(id, user.sub, dto);
   }
 
-  @ApiOperation({ summary: 'Xoa job post theo id (soft delete, yeu cau token recruiter)' })
+  @ApiOperation({
+    summary: 'Xoa job post theo id (soft delete, yeu cau token recruiter)',
+  })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, EmployeeGuard)
   @Delete(':id')
-  remove(
-    @ReqUser() user: RequestUser,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  remove(@ReqUser() user: RequestUser, @Param('id', ParseIntPipe) id: number) {
     return this.jobsService.deleteJob(id, user.sub);
   }
 
-  @ApiOperation({ summary: 'Kich hoat job post theo id (yeu cau token recruiter)' })
+  @ApiOperation({
+    summary: 'Kich hoat job post theo id (yeu cau token recruiter)',
+  })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, EmployeeGuard)
@@ -208,7 +216,9 @@ export class JobsController {
     return this.jobsService.activateJob(id, user.sub);
   }
 
-  @ApiOperation({ summary: 'Vo hieu hoa job post theo id (yeu cau token recruiter)' })
+  @ApiOperation({
+    summary: 'Vo hieu hoa job post theo id (yeu cau token recruiter)',
+  })
   @ApiParam({ name: 'id', example: 1, description: 'ID cua job post' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, EmployeeGuard)
